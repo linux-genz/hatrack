@@ -485,19 +485,15 @@ hatrack_set_difference(hatrack_set_t *set1, hatrack_set_t *set2)
     i = 0;
     j = 0;
 
-    while (true) {
-        if (i == num1 || j == num2) {
-            break;
-        }
-
-        if (hatrack_hashes_eq(view1[i].hv, view2[j].hv)) {
+    while (i < num1) {  // Stop when lhs is exhausted.
+        if (j < num2 && hatrack_hashes_eq(view1[i].hv, view2[j].hv)) {
             i++;
             j++;
             continue; // Not in result set.
         }
 
         // Next hash comes from the set on the rhs; we ignore it.
-        if (hatrack_hash_gt(view1[i].hv, view2[j].hv)) {
+        if (j < num2 && hatrack_hash_gt(view1[i].hv, view2[j].hv)) {
             j++;
             continue;
         }
@@ -685,7 +681,8 @@ hatrack_set_intersection(hatrack_set_t *set1, hatrack_set_t *set2)
  * The algorithm here is to sort by hash value, then go through in
  * tandem. If the item at the current index in one view has a lower
  * hash value than the item in the current index of the other view,
- * then that item is part of the disjunction.
+ * then that item is part of the disjunction. If either view runs out,
+ * then add all remaining items of the other view.
  */
 hatrack_set_t *
 hatrack_set_disjunction(hatrack_set_t *set1, hatrack_set_t *set2)
@@ -697,6 +694,7 @@ hatrack_set_disjunction(hatrack_set_t *set1, hatrack_set_t *set2)
     hatrack_set_view_t *view1;
     hatrack_set_view_t *view2;
     uint64_t            i, j;
+    bool                iDone, jDone;
 
     if (set1->item_type != set2->item_type) {
         abort();
@@ -714,14 +712,16 @@ hatrack_set_disjunction(hatrack_set_t *set1, hatrack_set_t *set2)
     i = 0;
     j = 0;
 
-    while ((i < num1) && (j < num2)) {
-        if (hatrack_hashes_eq(view1[i].hv, view2[j].hv)) {
+    while ((i < num1) || (j < num2)) {  // Stop when lhs & rhs are exhausted.
+	iDone = (i == num1);
+	jDone = (j == num2);
+        if (!iDone && !jDone && hatrack_hashes_eq(view1[i].hv, view2[j].hv)) {
             i++;
             j++;
             continue;
         }
 
-        if (hatrack_hash_gt(view1[i].hv, view2[j].hv)) {
+        if (iDone || (!jDone && hatrack_hash_gt(view1[i].hv, view2[j].hv))) {
             if (set2->pre_return_hook) {
                 (*set2->pre_return_hook)(set2, view2[j].item);
             }
