@@ -4,7 +4,7 @@
  *
  *  Name:           gate.c
  *
- *  Description:    A spin-lock intented primarily to aid in timing
+ *  Description:    A spin-lock intended primarily to aid in timing
  *                  multi-threaded operations.
  *
  *                  The basic idea is that we want to open the
@@ -18,7 +18,7 @@
  *
  *                  Meanwhile, the thread management thread calls
  *                  gate_open(), which spins until the requested
- *                  number threads are ready (which should be all
+ *                  number of threads are ready (which should be all
  *                  threads we want to benchmark).
  *
  *                  When the worker threads are ready, the manager's
@@ -39,6 +39,7 @@
 
 #include <hatrack/mmm.h>
 #include <strings.h>
+#include <time.h>
 
 typedef struct {
     _Atomic int64_t count;
@@ -76,7 +77,7 @@ gate_new_size(uint64_t mt)
 {
     gate_t *ret;
 
-    ret = (gate_t *)malloc(sizeof(gate_t) + sizeof(struct timespec) * mt);
+    ret = (gate_t *)HR_malloc(sizeof(gate_t) + sizeof(struct timespec) * mt);
 
     gate_init(ret, mt);
 
@@ -92,7 +93,7 @@ gate_new(void)
 static inline void
 gate_delete(gate_t *gate)
 {
-    free(gate);
+    HR_free(gate);
 
     return;
 }
@@ -179,6 +180,7 @@ gate_get_min(gate_t *gate)
 
 // Basic gates can be used w/o timing, or can do the start time, and
 // then you can handle the rest manually.
+// Base gates are local only - not fabric aware.
 typedef _Atomic int64_t basic_gate_t;
 
 static inline void

@@ -12,6 +12,7 @@
  *  Author:         John Viega, john@zork.org
  */
 
+#include "hatrack.h"
 #include "testhat.h"
 
 #define basictest(name, g, p, a, r, d, v, o, sz, pf, range, num, ops)          \

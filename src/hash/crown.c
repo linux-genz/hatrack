@@ -175,7 +175,7 @@ crown_new(void)
 {
     crown_t *ret;
 
-    ret = (crown_t *)malloc(sizeof(crown_t));
+    ret = (crown_t *)HR_malloc(sizeof(crown_t));
 
     crown_init(ret);
 
@@ -187,7 +187,7 @@ crown_new_size(char size)
 {
     crown_t *ret;
 
-    ret = (crown_t *)malloc(sizeof(crown_t));
+    ret = (crown_t *)HR_malloc(sizeof(crown_t));
 
     crown_init_size(ret, size);
 
@@ -238,7 +238,7 @@ void
 crown_delete(crown_t *self)
 {
     crown_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -360,6 +360,7 @@ crown_view_fast(crown_t *self, uint64_t *num, bool sort)
 
     store     = atomic_read(&self->store_current);
     alloc_len = sizeof(hatrack_view_t) * (store->last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -389,6 +390,7 @@ crown_view_fast(crown_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = realloc(view, num_items * sizeof(hatrack_view_t));
 
     if (sort) {
@@ -433,6 +435,7 @@ crown_view_slow(crown_t *self, uint64_t *num, bool sort)
     crown_store_migrate(store, self);
 
     alloc_len = sizeof(hatrack_view_t) * (store->last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -462,6 +465,7 @@ crown_view_slow(crown_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = realloc(view, num_items * sizeof(hatrack_view_t));
 
     if (sort) {

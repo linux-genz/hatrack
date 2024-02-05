@@ -31,6 +31,7 @@
  *
  */
 
+#include "hatrack.h"
 #include "testhat.h"
 
 #include <string.h>

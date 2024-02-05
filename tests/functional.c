@@ -9,6 +9,7 @@
  *  Author:         John Viega, john@zork.org
  */
 
+#include "hatrack.h"
 #include "testhat.h"
 
 #include <stdio.h>
@@ -65,12 +66,12 @@ functionality_test(test_func_t func,
     testhat_t       *dict;
 
     atomic_store(&test_func, NULL);
-    atomic_store(&mmm_nexttid, 0); // Reset thread ids.
+    atomic_store(&mmm_root->mmm_nexttid, 0); // Reset thread ids.
 
     dict = testhat_new(type);
 
     /* Make sure there are enough precomputed hash values.  Most of
-     * these functional tests insert i + 1, and some insert 1 + 2.  We
+     * these functional tests insert i + 1, and some insert i + 2.  We
      * do range * 2, just to give us some headroom for other potential
      * functional tests.
      */

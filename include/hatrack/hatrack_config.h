@@ -91,7 +91,7 @@
 /* HATRACK_MMM_DEBUG
  *
  * This variable turns ON debugging information in the memory manager,
- * that causes it to recore when it allocs, retires and frees records,
+ * that causes it to record when it allocs, retires and frees records,
  * complete with epoch information associated with the memory address.
  *
  * Note that this is seprate from the DEBUG_MMM() macro... which is
@@ -109,7 +109,7 @@
 
 /* HATRACK_DEBUG_MSG_SIZE
  *
- * When using the ring bugger, this variable controls how many bytes
+ * When using the ring buffer, this variable controls how many bytes
  * are available for each ring buffer entry. Try to keep it small. And
  * for alignment purposes, you probably want to keep it a power of
  * two, but at least pointer-aligned.
@@ -250,7 +250,7 @@
  * reader writes the current epoch into their slot in the array in
  * order to declare the current epoch as the one they're reading in.
  * Readers will ignore any writes that are from after the epoch, as
- * well as any objects that were retired before or duing this epoch
+ * well as any objects that were retired before or during this epoch
  * (retirements are essentially deletions, and write operations are
  * always expected to logically happen at the beginning of an epoch).
  *
@@ -736,6 +736,22 @@
         HACK_TO_MAKE_64_BIT_##x = 0xffffffffffffffff                           \
     } x
 #endif
+
+/* HATRACK_FABRIC
+ *
+ * Define this to cause all hatrack memory allocations to use
+ * the ralloc (fabric) memory allocator.
+ */
+
+#define HATRACK_FABRIC
+
+/* HATRACK_FABRIC_ATOMICS
+ *
+ * Define this to cause all hatrack atomic operations to use
+ * fabric atomics (via openfam?) .
+ */
+
+#undef HATRACK_FABRIC_ATOMICS
 
 #endif
 

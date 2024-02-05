@@ -37,7 +37,7 @@ flexarray_new(uint64_t initial_size)
 {
     flexarray_t *arr;
 
-    arr = (flexarray_t *)malloc(sizeof(flexarray_t));
+    arr = (flexarray_t *)HR_malloc(sizeof(flexarray_t));
     
     flexarray_init(arr, initial_size);
     
@@ -103,7 +103,7 @@ void
 flexarray_delete(flexarray_t *self)
 {
     flexarray_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -329,6 +329,7 @@ flexarray_view(flexarray_t *self)
     
     mmm_end_op();
     
+    // Views are not allocated in fabric memory.
     ret           = (flex_view_t *)malloc(sizeof(flex_view_t));
     ret->contents = store;
     ret->next_ix  = 0;

@@ -53,7 +53,7 @@ vector_new(int64_t initial_size)
 {
     vector_t *arr;
 
-    arr = (vector_t *)calloc(1, sizeof(vector_t));
+    arr = (vector_t *)HR_calloc(1, sizeof(vector_t));
     
     vector_init(arr, initial_size, false);
     
@@ -120,7 +120,7 @@ void
 vector_delete(vector_t *self)
 {
     vector_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -362,6 +362,7 @@ vector_view(vector_t *self)
     vector_item_t   item;
     vec_size_info_t si;            
 
+    // Views are not allocated in fabric memory.
     ret          = malloc(sizeof(vector_view_t));
     ret->next_ix = 0;
 		 

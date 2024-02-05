@@ -66,6 +66,7 @@
  *  Author:         John Viega, john@zork.org
  */
 
+#include "hatrack.h"
 #include "testhat.h"
 
 #include <fcntl.h>  // For open
@@ -89,7 +90,7 @@ system_random(char *buf, size_t num)
         rand_fd = open("/dev/urandom", O_RDONLY);
     }
 
-    read(rand_fd, buf, num);
+    (void)read(rand_fd, buf, num);
 
     return;
 }

@@ -67,7 +67,7 @@ ex_str_from_cstr(char *s)
     uint64_t  len;
 
     len           = strlen(s);
-    ret           = (ex_str_t *)calloc(1, sizeof(ex_str_t) + len + 1);
+    ret           = (ex_str_t *)HR_calloc(1, sizeof(ex_str_t) + len + 1);
     ret->len      = len;
     ret->refcount = 1;
 
@@ -93,7 +93,7 @@ ex_str_decref(ex_str_t *obj)
      * decref when we read 1.
      */
     if (atomic_fetch_sub(&obj->refcount, 1) == 1) {
-        free(obj);
+        HR_free(obj);
         return true;
     }
 
@@ -123,7 +123,7 @@ dict_decref_for_table(hatrack_dict_t *unused, hatrack_dict_item_t *item)
     printf("Decref on eject of string '%s' (@ %p)\n", str->bytes, str);
 
     if (ex_str_decref((ex_str_t *)str)) {
-        printf("(no more refereces; calling free!)\n");
+        printf("(no more references; calling free!)\n");
     }
 
     return;
@@ -311,7 +311,7 @@ instantiate_objects(int argc, char *argv[])
     ex_str_t **ret;
     int        i;
 
-    ret = (ex_str_t **)malloc(sizeof(ex_str_t *) * argc);
+    ret = (ex_str_t **)HR_malloc(sizeof(ex_str_t *) * argc);
 
     for (i = 0; i < argc; i++) {
         ret[i] = ex_str_from_cstr(argv[i]);
@@ -326,6 +326,7 @@ main(int argc, char *argv[])
     ex_str_t **str_objs;
     int        i;
 
+    mmm_init("hatrack-hashable", GB(2));
     str_objs = instantiate_objects(argc, argv);
 
     dict_example(argc, str_objs);
@@ -337,7 +338,7 @@ main(int argc, char *argv[])
                str_objs[i]->bytes,
                str_objs[i]);
         if (ex_str_decref(str_objs[i])) {
-            printf("(no more refereces; calling free!)\n");
+            printf("(no more references; calling free!)\n");
         }
     }
 

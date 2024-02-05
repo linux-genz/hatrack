@@ -97,8 +97,8 @@ envp_free_handler(hatrack_dict_t *unused, hatrack_dict_item_t *item)
             (char *)item->key,
             (char *)item->value);
 
-    free(item->key);
-    free(item->value);
+    HR_free(item->key);
+    HR_free(item->value);
 
     return;
 }
@@ -114,6 +114,7 @@ main(int argc, char *argv[], char *envp[])
     char           *env_val;
     char           *p;
 
+    mmm_init("hatrack-basic", GB(2));
     argv_dict = hatrack_dict_new(HATRACK_DICT_KEY_TYPE_INT);
     envp_dict = hatrack_dict_new(HATRACK_DICT_KEY_TYPE_CSTR);
 
@@ -137,8 +138,8 @@ main(int argc, char *argv[], char *envp[])
     while (envp[i]) {
         p       = envp[i];
         env_eq  = strchr(p, '=');
-        env_key = strndup(p, env_eq - p);
-        env_val = strdup(env_eq + 1);
+        env_key = HR_strndup(p, env_eq - p);
+        env_val = HR_strdup(env_eq + 1);
 
         hatrack_dict_put(envp_dict, env_key, env_val);
 

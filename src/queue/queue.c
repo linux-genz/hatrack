@@ -82,7 +82,7 @@ queue_new_size(char size)
 {
     queue_t *ret;
 
-    ret = (queue_t *)malloc(sizeof(queue_t));
+    ret = (queue_t *)HR_malloc(sizeof(queue_t));
     queue_init_size(ret, size);
 
     return ret;
@@ -118,7 +118,7 @@ void
 queue_delete(queue_t *self)
 {
     queue_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }

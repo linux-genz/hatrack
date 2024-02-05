@@ -23,6 +23,7 @@
  *
  */
 
+#include "hatrack.h"
 #include "testhat.h" // Will NOT be installed, so leave in quotes.
 
 #include <hatrack/hash.h>
@@ -67,6 +68,7 @@ main(int argc, char *argv[])
 
     config = parse_args(argc, argv);
 
+    mmm_init("hatrack-test", GB(10));
     mmm_register_thread();
 
     if (config->run_custom_test) {

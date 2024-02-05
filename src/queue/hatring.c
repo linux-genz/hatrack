@@ -49,7 +49,7 @@ hatring_new(uint64_t num_buckets)
     }
 
     alloc_len = sizeof(hatring_cell_t) * num_buckets;
-    ret       = (hatring_t *)calloc(1,sizeof(hatring_t) + alloc_len);
+    ret       = (hatring_t *)HR_calloc(1,sizeof(hatring_t) + alloc_len);
 
     /* We start the epochs up high so that we can be confident when
      * dequeuing whether the cell was enqueued, when we see an epoch
@@ -102,7 +102,7 @@ void
 hatring_delete(hatring_t *self)
 {
     hatring_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }

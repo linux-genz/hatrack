@@ -217,7 +217,8 @@ int
 main(void)
 {
     uint64_t               i, j;
-    
+
+    mmm_init("hatrack-ring", GB(2));
     gate = gate_new();
     i    = 0;
     j    = 0;

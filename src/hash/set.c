@@ -31,7 +31,7 @@ hatrack_set_new(uint32_t item_type)
 {
     hatrack_set_t *ret;
 
-    ret = (hatrack_set_t *)malloc(sizeof(hatrack_set_t));
+    ret = (hatrack_set_t *)HR_malloc(sizeof(hatrack_set_t));
 
     hatrack_set_init(ret, item_type);
 
@@ -108,7 +108,7 @@ hatrack_set_delete(hatrack_set_t *self)
 {
     hatrack_set_cleanup(self);
 
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -212,6 +212,7 @@ hatrack_set_items_base(hatrack_set_t *self, uint64_t *num, bool sort)
     epoch = mmm_start_linearized_op();
 
     view = woolhat_view_epoch(&self->woolhat_instance, num, epoch);
+    // Views are not allocated in fabric memory.
     ret  = malloc(sizeof(void *) * *num);
 
     if (sort) {

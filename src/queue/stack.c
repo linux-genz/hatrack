@@ -113,7 +113,7 @@ hatstack_new(uint64_t prealloc)
 {
     hatstack_t *ret;
 
-    ret = (hatstack_t *)malloc(sizeof(hatstack_t));
+    ret = (hatstack_t *)HR_malloc(sizeof(hatstack_t));
 
     hatstack_init(ret, prealloc);
 
@@ -147,7 +147,7 @@ hatstack_delete(hatstack_t *self)
 {
     hatstack_cleanup(self);
 
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -448,6 +448,7 @@ hatstack_view(hatstack_t *self)
     hatstack_grow_store(store, self);
     mmm_end_op();
 
+    // Views are not allocated in fabric memory.
     ret          = (stack_view_t *)malloc(sizeof(flex_view_t));
     ret->store   = store;
     ret->next_ix = 0;

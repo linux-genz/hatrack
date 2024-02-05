@@ -168,7 +168,7 @@ hq_new_size(uint64_t size)
 {
     hq_t *ret;
 
-    ret = (hq_t *)malloc(sizeof(hq_t));
+    ret = (hq_t *)HR_malloc(sizeof(hq_t));
     hq_init_size(ret, size);
 
     return ret;
@@ -191,7 +191,7 @@ void
 hq_delete(hq_t *self)
 {
     hq_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -431,6 +431,7 @@ hq_view(hq_t *self)
 
     mmm_start_basic_op();
 
+    // Views are not allocated in fabric memory.
     ret = (hq_view_t *)malloc(sizeof(hq_view_t));
 
     while (true) {

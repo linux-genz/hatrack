@@ -97,7 +97,7 @@ dec_output_int64_t(int64_t n, FILE *f)
 
 #else
 
-#define dec_outf(n, f) fprintf(f, "%ld", (long long)n);
+#define dec_outf(n, f) fprintf(f, "%lld", (long long)n);
 
 #endif
 
@@ -385,6 +385,7 @@ main(void)
     hatrack_set_t *s1, *s2, *s3;
     uint64_t       i;
 
+    mmm_init("hatrack-set1", GB(2));
     s1 = hatrack_set_new(HATRACK_DICT_KEY_TYPE_INT);
     s2 = hatrack_set_new(HATRACK_DICT_KEY_TYPE_INT);
     s3 = hatrack_set_new(HATRACK_DICT_KEY_TYPE_INT);

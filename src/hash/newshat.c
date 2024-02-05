@@ -52,7 +52,7 @@ static newshat_store_t *newshat_store_migrate(newshat_store_t *, newshat_t *);
 
 /* newshat_new()
  *
- * Allocates a new newshat object with the system malloc, and
+ * Allocates a new newshat object with the hatrack malloc, and
  * initializes it.
  */
 newshat_t *
@@ -60,7 +60,7 @@ newshat_new(void)
 {
     newshat_t *ret;
 
-    ret = (newshat_t *)malloc(sizeof(newshat_t));
+    ret = (newshat_t *)HR_malloc(sizeof(newshat_t));
 
     newshat_init(ret);
 
@@ -72,7 +72,7 @@ newshat_new_size(char size)
 {
     newshat_t *ret;
 
-    ret = (newshat_t *)malloc(sizeof(newshat_t));
+    ret = (newshat_t *)HR_malloc(sizeof(newshat_t));
 
     newshat_init_size(ret, size);
 
@@ -161,7 +161,7 @@ void
 newshat_delete(newshat_t *self)
 {
     newshat_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -321,6 +321,7 @@ newshat_view(newshat_t *self, uint64_t *num, bool sort)
     store     = self->store_current;
     last_slot = store->last_slot;
     alloc_len = sizeof(hatrack_view_t) * (last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -368,6 +369,7 @@ newshat_view(newshat_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = (hatrack_view_t *)realloc(view, sizeof(hatrack_view_t) * count);
 
     if (sort) {

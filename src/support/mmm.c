@@ -26,13 +26,8 @@
 // clang-format off
 __thread mmm_header_t  *mmm_retire_list  = NULL;
 __thread pthread_once_t mmm_inited       = PTHREAD_ONCE_INIT;
-_Atomic  uint64_t       mmm_epoch        = HATRACK_EPOCH_FIRST;
-_Atomic  uint64_t       mmm_nexttid      = 0;
 __thread int64_t        mmm_mytid        = -1; 
 __thread uint64_t       mmm_retire_ctr   = 0;
-
-         uint64_t       mmm_reservations[HATRACK_THREADS_MAX] = { 0, };
-
 //clang-format on
 
 
@@ -53,7 +48,42 @@ static void    mmm_empty(void);
  *
  */
 
-static _Atomic (mmm_free_tids_t *) mmm_free_tids;
+mmm_root_t *mmm_root;
+
+#ifdef HATRACK_FABRIC
+#define MMM_ROOT 1 // ralloc root index
+#else
+mmm_root_t mmm_root_global =
+{ .mmm_epoch = HATRACK_EPOCH_FIRST,
+  .mmm_nexttid = 0,
+  .mmm_reservations = { 0, },
+};
+#endif
+
+int
+mmm_init(const char *_id, uint64_t size)
+{
+    int restart = 0;
+    mmm_root_t *root;
+
+#ifdef HATRACK_FABRIC
+    /* initialize ralloc */
+    restart = RP_init(_id, size);
+    if (restart) {
+	root = (mmm_root_t *)RP_get_root_c(MMM_ROOT);
+    } else {
+	root = RP_malloc(sizeof(*root));
+	root->mmm_epoch = HATRACK_EPOCH_FIRST;
+	root->mmm_nexttid = 0;
+	memset(root->mmm_reservations, 0, HATRACK_THREADS_MAX*sizeof(uint64_t));
+	RP_set_root(root, MMM_ROOT);
+    }
+#else
+    root = &mmm_root_global;
+#endif
+    mmm_root = root;
+    return restart;
+}
 
 /* This grabs an mmm-specific threadid and stashes it in the
  * thread-local variable mmm_mytid.
@@ -73,22 +103,22 @@ mmm_register_thread(void)
     if (mmm_mytid != -1) {
 	return;
     }
-    mmm_mytid = atomic_fetch_add(&mmm_nexttid, 1);
+    mmm_mytid = atomic_fetch_add(&mmm_root->mmm_nexttid, 1);
     
     if (mmm_mytid >= HATRACK_THREADS_MAX) {
-	head = atomic_load(&mmm_free_tids);
+	head = atomic_load(&mmm_root->mmm_free_tids);
 	
 	do {
 	    if (!head) {
 		abort();
 	    }
-	} while (!CAS(&mmm_free_tids, &head, head->next));
+	} while (!CAS(&mmm_root->mmm_free_tids, &head, head->next));
 	
 	mmm_mytid = head->tid;
 	mmm_retire(head);
     }
     
-    mmm_reservations[mmm_mytid] = HATRACK_EPOCH_UNRESERVED;
+    mmm_root->mmm_reservations[mmm_mytid] = HATRACK_EPOCH_UNRESERVED;
 
     return;
 }
@@ -102,11 +132,11 @@ mmm_tid_giveback(void)
 
     new_head       = mmm_alloc(sizeof(mmm_free_tids_t));
     new_head->tid  = mmm_mytid;
-    old_head       = atomic_load(&mmm_free_tids);
+    old_head       = atomic_load(&mmm_root->mmm_free_tids);
 
     do {
 	new_head->next = old_head;
-    } while (!CAS(&mmm_free_tids, &old_head, new_head));
+    } while (!CAS(&mmm_root->mmm_free_tids, &old_head, new_head));
 
     return;
 }
@@ -115,7 +145,7 @@ mmm_tid_giveback(void)
 // is not the way to handle tid recyling!
 void mmm_reset_tids(void)
 {
-    atomic_store(&mmm_nexttid, 0);
+    atomic_store(&mmm_root->mmm_nexttid, 0);
 
     return;
 }
@@ -123,7 +153,7 @@ void mmm_reset_tids(void)
 /* For now, our cleanup function spins until it is able to retire
  * everything on its list. Soon, when we finally get around to
  * worrying about thread kills, we will change this to add its
- * contents to an "ophan" list.
+ * contents to an "orphan" list.
  */
 void
 mmm_clean_up_before_exit(void)
@@ -177,7 +207,7 @@ mmm_retire(void *ptr)
      */
     if (cell->retire_epoch) {
 	DEBUG_MMM_INTERNAL(ptr, "Double free");
-	DEBUG_PTR((void *)atomic_load(&mmm_epoch), "epoch of double free");
+	DEBUG_PTR((void *)atomic_load(&mmm_root->mmm_epoch), "epoch of double free");
 	
 	abort();
 	
@@ -185,7 +215,7 @@ mmm_retire(void *ptr)
     }
 #endif	
     
-    cell->retire_epoch = atomic_load(&mmm_epoch);
+    cell->retire_epoch = atomic_load(&mmm_root->mmm_epoch);
     cell->next         = mmm_retire_list;
     mmm_retire_list    = cell;
 
@@ -224,7 +254,7 @@ mmm_empty(void)
      * not be able to reserve something that's already been retired
      * by the time we call this.
      */
-    lasttid = atomic_load(&mmm_nexttid);
+    lasttid = atomic_load(&mmm_root->mmm_nexttid);
     
     if (lasttid > HATRACK_THREADS_MAX) {
 	lasttid = HATRACK_THREADS_MAX;
@@ -238,7 +268,7 @@ mmm_empty(void)
     lowest = HATRACK_EPOCH_MAX;
 
     for (i = 0; i < lasttid; i++) {
-	reservation = mmm_reservations[i];
+	reservation = mmm_root->mmm_reservations[i];
 	
 	if (reservation < lowest) {
 	    lowest = reservation;
@@ -294,7 +324,7 @@ mmm_empty(void)
 	    (*tmp->cleanup)(&tmp->data, tmp->cleanup_aux);
 	}
 	
-	free(tmp);
+	HR_free(tmp);
     }
 
     return;

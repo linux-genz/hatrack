@@ -1,5 +1,5 @@
-#include <testhat.h>
 #include <hatrack.h>
+#include <testhat.h>
 #include <stdio.h>
 
 /* This is not the best test of anything. The workload doesn't feel
@@ -228,6 +228,7 @@ single_threaded_v2(void)
 int
 main(void)
 {
+    mmm_init("hatrack-oldqx", GB(6));
     single_threaded_v1();
     single_threaded_v2();
     multi_threaded_v1(2);

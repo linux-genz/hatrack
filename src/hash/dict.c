@@ -31,7 +31,7 @@ hatrack_dict_new(uint32_t key_type)
 {
     hatrack_dict_t *ret;
 
-    ret = (hatrack_dict_t *)malloc(sizeof(hatrack_dict_t));
+    ret = (hatrack_dict_t *)HR_malloc(sizeof(hatrack_dict_t));
 
     hatrack_dict_init(ret, key_type);
 
@@ -109,7 +109,7 @@ hatrack_dict_delete(hatrack_dict_t *self)
 {
     hatrack_dict_cleanup(self);
 
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -397,6 +397,7 @@ hatrack_dict_keys_base(hatrack_dict_t *self, uint64_t *num, bool sort)
     }
     
     alloc_len = sizeof(hatrack_dict_key_t) * *num;
+    // Views are not allocated in fabric memory.
     ret       = (hatrack_dict_key_t *)malloc(alloc_len);
 
     if (self->key_return_hook) {
@@ -440,6 +441,7 @@ hatrack_dict_values_base(hatrack_dict_t *self, uint64_t *num, bool sort)
     }
 
     alloc_len = sizeof(hatrack_dict_value_t) * *num;
+    // Views are not allocated in fabric memory.
     ret       = (hatrack_dict_value_t *)malloc(alloc_len);
 
     if (self->val_return_hook) {
@@ -482,6 +484,7 @@ hatrack_dict_items_base(hatrack_dict_t *self, uint64_t *num, bool sort)
     }
 
     alloc_len = sizeof(hatrack_dict_item_t) * *num;
+    // Views are not allocated in fabric memory.
     ret       = (hatrack_dict_item_t *)malloc(alloc_len);
 
     for (i = 0; i < *num; i++) {

@@ -44,14 +44,14 @@ static hihat_store_t *hihat_store_migrate(hihat_store_t *, hihat_t *);
 
 /* hihat_new()
  *
- * A wrapper for hihat_init() that allocates with the default malloc.
+ * A wrapper for hihat_init() that allocates with the hatrack malloc.
  */
 hihat_t *
 hihat_new(void)
 {
     hihat_t *ret;
 
-    ret = (hihat_t *)malloc(sizeof(hihat_t));
+    ret = (hihat_t *)HR_malloc(sizeof(hihat_t));
 
     hihat_init(ret);
 
@@ -63,7 +63,7 @@ hihat_new_size(char size)
 {
     hihat_t *ret;
 
-    ret = (hihat_t *)malloc(sizeof(hihat_t));
+    ret = (hihat_t *)HR_malloc(sizeof(hihat_t));
 
     hihat_init_size(ret, size);
 
@@ -127,13 +127,13 @@ hihat_cleanup(hihat_t *self)
  * Deallocate a hihat object and its internal state (via hihat_cleanup).
  *
  * Note that this function assumes the hihat object was allocated
- * via the default malloc. 
+ * via the hatrack malloc.
  */
 void
 hihat_delete(hihat_t *self)
 {
     hihat_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -378,6 +378,7 @@ hihat_view(hihat_t *self, uint64_t *num, bool sort)
 
     store     = atomic_read(&self->store_current);
     alloc_len = sizeof(hatrack_view_t) * (store->last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -411,6 +412,7 @@ hihat_view(hihat_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = realloc(view, num_items * sizeof(hatrack_view_t));
 
     if (sort) {

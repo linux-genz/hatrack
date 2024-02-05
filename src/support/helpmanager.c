@@ -65,7 +65,7 @@ hatrack_perform_wf_op(help_manager_t *manager,
     help_cell_t    retcell;
     help_cell_t    foundcell;    
 
-    my_record                = &thread_records[mmm_mytid];
+    my_record                = &mmm_root->help_thread_records[mmm_mytid];
     my_record->op            = op;
     my_record->input         = data;
     my_record->aux           = aux;

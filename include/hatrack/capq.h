@@ -52,6 +52,7 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 #include <hatrack/hatrack_config.h>
+#include <hatrack/hq.h>
 
 
 // clang-format off

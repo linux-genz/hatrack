@@ -22,6 +22,30 @@
 #ifndef __HATRACK_H__
 #define __HATRACK_H__
 
+
+#define KB(x)  (x)*1024
+#define MB(x)  KB(x)*1024
+#define GB(x)  MB(x)*1024ull
+#include <hatrack/hatrack_config.h>
+
+#ifdef HATRACK_FABRIC
+#include <ralloc.hpp>
+
+#define HR_malloc(_sz)        RP_malloc(_sz)
+#define HR_free(_ptr)         RP_free(_ptr)
+#define HR_calloc(_n, _sz)    RP_calloc(_n, _sz)
+#define HR_realloc(_ptr, _sz) RP_realloc(_ptr, _sz)
+#define HR_strdup(_ptr)       RP_strdup(_ptr)
+#define HR_strndup(_ptr, _sz) RP_strndup(_ptr, _sz)
+#else
+#define HR_malloc(_sz)        malloc(_sz)
+#define HR_free(_ptr)         free(_ptr)
+#define HR_calloc(_n, _sz)    calloc(_n, _sz)
+#define HR_realloc(_ptr, _sz) realloc(_ptr, _sz)
+#define HR_strdup(_ptr)       strdup(_ptr)
+#define HR_strndup(_ptr, _sz) strndup(_ptr, _sz)
+#endif
+
 #include <hatrack/gate.h>
 
 // Currently pulls in Crown.

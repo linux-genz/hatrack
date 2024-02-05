@@ -42,6 +42,7 @@
 
 // clang-format off
 typedef struct {
+    alignas(16)
     void    *item;
     uint64_t state;
 } hq_item_t;

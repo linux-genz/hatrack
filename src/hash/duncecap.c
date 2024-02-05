@@ -95,7 +95,7 @@ duncecap_viewer_exit(duncecap_t *self, duncecap_store_t *unused)
 
 /* duncecap_new()
  *
- * Allocates a new duncecap object with the system malloc, and
+ * Allocates a new duncecap object with the hatrack malloc, and
  * initializes it.
  */
 duncecap_t *
@@ -103,7 +103,7 @@ duncecap_new(void)
 {
     duncecap_t *ret;
 
-    ret = (duncecap_t *)malloc(sizeof(duncecap_t));
+    ret = (duncecap_t *)HR_malloc(sizeof(duncecap_t));
 
     duncecap_init(ret);
 
@@ -115,7 +115,7 @@ duncecap_new_size(char size)
 {
     duncecap_t *ret;
 
-    ret = (duncecap_t *)malloc(sizeof(duncecap_t));
+    ret = (duncecap_t *)HR_malloc(sizeof(duncecap_t));
 
     duncecap_init_size(ret, size);
 
@@ -125,7 +125,7 @@ duncecap_new_size(char size)
 /* duncecap_init()
  *
  * It's expected that duncecap instances will be created via the
- * default malloc.  This function cannot rely on zero-initialization
+ * hatrack malloc.  This function cannot rely on zero-initialization
  * of its own object.
  */
 void
@@ -170,13 +170,13 @@ duncecap_init_size(duncecap_t *self, char size)
  *
  * duncecap_delete() below is similar, except that it also calls
  * free() on the actual top-level object as well, under the assumption
- * it was created with the default malloc implementation.
+ * it was created with the hatrack malloc implementation.
  */
 void
 duncecap_cleanup(duncecap_t *self)
 {
     pthread_mutex_destroy(&self->mutex);
-    free(self->store_current);
+    HR_free(self->store_current);
 
     return;
 }
@@ -190,8 +190,8 @@ duncecap_cleanup(duncecap_t *self)
  * reference to the store).
  *
  * Note that this function assumes the duncecap object was allocated
- * via the default malloc. If it wasn't, don't call this directly, but
- * do note that the stores were created via the system malloc, and the
+ * via the hatrack malloc. If it wasn't, don't call this directly, but
+ * do note that the stores were created via the hatrack malloc, and the
  * most recent store will need to be freed (and the mutex destroyed).
  *
  * This is particularly important, not just because you might use
@@ -204,7 +204,7 @@ void
 duncecap_delete(duncecap_t *self)
 {
     duncecap_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -432,6 +432,7 @@ duncecap_view(duncecap_t *self, uint64_t *num, bool sort)
     store     = duncecap_viewer_enter(self);
     last_slot = store->last_slot;
     alloc_len = sizeof(hatrack_view_t) * (last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -463,6 +464,7 @@ duncecap_view(duncecap_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = (hatrack_view_t *)realloc(view, sizeof(hatrack_view_t) * count);
 
     if (sort) {
@@ -482,7 +484,7 @@ duncecap_store_new(uint64_t size)
 
     alloc_len      = sizeof(duncecap_store_t);
     alloc_len     += size * sizeof(duncecap_bucket_t);
-    ret            = (duncecap_store_t *)calloc(1, alloc_len);
+    ret            = (duncecap_store_t *)HR_calloc(1, alloc_len);
     ret->last_slot = size - 1;
     ret->threshold = hatrack_compute_table_threshold(size);
 
@@ -847,7 +849,7 @@ duncecap_migrate(duncecap_t *self)
     while (atomic_load(&cur_store->readers))
         ;
     
-    free(cur_store);
+    HR_free(cur_store);
 
     return;
 }

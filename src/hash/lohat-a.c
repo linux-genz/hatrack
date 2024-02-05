@@ -65,7 +65,7 @@ lohat_a_new(void)
 {
     lohat_a_t *ret;
 
-    ret = (lohat_a_t *)malloc(sizeof(lohat_a_t));
+    ret = (lohat_a_t *)HR_malloc(sizeof(lohat_a_t));
 
     lohat_a_init(ret);
 
@@ -137,7 +137,7 @@ void
 lohat_a_delete(lohat_a_t *self)
 {
     lohat_a_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -252,6 +252,7 @@ lohat_a_view(lohat_a_t *self, uint64_t *out_num, bool sort)
         end = store->hist_end;
     }
 
+    // Views are not allocated in fabric memory.
     view = (hatrack_view_t *)malloc(sizeof(hatrack_view_t) * (end - cur));
     p    = view;
 
@@ -293,6 +294,7 @@ lohat_a_view(lohat_a_t *self, uint64_t *out_num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = realloc(view, num_items * sizeof(hatrack_view_t));
 
     if (sort) {

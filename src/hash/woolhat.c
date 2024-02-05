@@ -93,7 +93,7 @@ woolhat_new(void)
 {
     woolhat_t *ret;
 
-    ret = (woolhat_t *)malloc(sizeof(woolhat_t));
+    ret = (woolhat_t *)HR_malloc(sizeof(woolhat_t));
 
     woolhat_init(ret);
 
@@ -105,7 +105,7 @@ woolhat_new_size(char size)
 {
     woolhat_t *ret;
 
-    ret = (woolhat_t *)malloc(sizeof(woolhat_t));
+    ret = (woolhat_t *)HR_malloc(sizeof(woolhat_t));
 
     woolhat_init_size(ret, size);
 
@@ -178,7 +178,7 @@ void
 woolhat_delete(woolhat_t *self)
 {
     woolhat_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -326,6 +326,7 @@ woolhat_view(woolhat_t *self, uint64_t *out_num, bool sort)
     store = self->store_current;
     cur   = store->hist_buckets;
     end   = cur + (store->last_slot + 1);
+    // Views are not allocated in fabric memory.
     view  = (hatrack_view_t *)malloc(sizeof(hatrack_view_t) * (end - cur));
     p     = view;
 
@@ -375,6 +376,7 @@ woolhat_view(woolhat_t *self, uint64_t *out_num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = (hatrack_view_t *)realloc(view, num_items * sizeof(hatrack_view_t));
 
     if (sort) {
@@ -417,6 +419,7 @@ woolhat_view_epoch(woolhat_t *self, uint64_t *out_num, uint64_t epoch)
     cur       = store->hist_buckets;
     end       = cur + (store->last_slot + 1);
     alloc_len = sizeof(hatrack_set_view_t);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_set_view_t *)calloc(end - cur, alloc_len);
     p         = view;
 
@@ -468,6 +471,7 @@ woolhat_view_epoch(woolhat_t *self, uint64_t *out_num, uint64_t epoch)
     }
 
     alloc_len = num_items * sizeof(hatrack_set_view_t);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_set_view_t *)realloc(view, alloc_len);
 
     return view;

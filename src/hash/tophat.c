@@ -77,7 +77,7 @@ tophat_new_fast_mx(void)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_fast_mx(ret);
 
@@ -89,7 +89,7 @@ tophat_new_fast_wf(void)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_fast_wf(ret);
 
@@ -101,7 +101,7 @@ tophat_new_cst_mx(void)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_cst_mx(ret);
 
@@ -113,7 +113,7 @@ tophat_new_cst_wf(void)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_cst_wf(ret);
 
@@ -125,7 +125,7 @@ tophat_new_fast_mx_size(char size)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_fast_mx_size(ret, size);
 
@@ -137,7 +137,7 @@ tophat_new_fast_wf_size(char size)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_fast_wf_size(ret, size);
 
@@ -149,7 +149,7 @@ tophat_new_cst_mx_size(char size)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_cst_mx_size(ret, size);
 
@@ -161,7 +161,7 @@ tophat_new_cst_wf_size(char size)
 {
     tophat_t *ret;
 
-    ret = (tophat_t *)malloc(sizeof(tophat_t));
+    ret = (tophat_t *)HR_malloc(sizeof(tophat_t));
 
     tophat_init_cst_wf_size(ret, size);
 
@@ -195,7 +195,7 @@ void
 tophat_delete(tophat_t *self)
 {
     tophat_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -912,7 +912,7 @@ tophat_view(tophat_t *self, uint64_t *num, bool sort)
      */
     alloc_len = sizeof(hatrack_view_t) * (ctx->last_slot + 1);
     n         = 0;
-    view      = (hatrack_view_t *)malloc(alloc_len);
+    view      = (hatrack_view_t *)HR_malloc(alloc_len);
     p         = view;
     cur       = ctx->buckets;
     end       = cur + (ctx->last_slot + 1);
@@ -1064,7 +1064,7 @@ tophat_migrate_to_newshat(tophat_t *self)
     
 
     ctx                      = self->st_table;
-    new_table                = (newshat_t *)malloc(sizeof(newshat_t));
+    new_table                = (newshat_t *)HR_malloc(sizeof(newshat_t));
     new_table->store_current = newshat_store_new(ctx->last_slot + 1);
 
     for (n = 0; n <= ctx->last_slot; n++) {
@@ -1140,7 +1140,7 @@ tophat_migrate_to_witchhat(tophat_t *self)
     uint64_t            i, n, bix;
 
     ctx                      = self->st_table;
-    new_table                = (witchhat_t *)malloc(sizeof(witchhat_t));
+    new_table                = (witchhat_t *)HR_malloc(sizeof(witchhat_t));
     new_table->store_current = witchhat_store_new(ctx->last_slot + 1);
     new_table->next_epoch    = ctx->next_epoch;
     new_table->item_count    = ctx->item_count;
@@ -1219,7 +1219,7 @@ tophat_migrate_to_ballcap(tophat_t *self)
 
 
     ctx                      = self->st_table;
-    new_table                = (ballcap_t *)malloc(sizeof(ballcap_t));
+    new_table                = (ballcap_t *)HR_malloc(sizeof(ballcap_t));
     new_table->store_current = ballcap_store_new(ctx->last_slot + 1);
     record_len               = sizeof(ballcap_record_t);
 
@@ -1288,7 +1288,7 @@ tophat_migrate_to_woolhat(tophat_t *self)
     uint64_t            n, i, bix, record_len;
 
     ctx                      = self->st_table;
-    new_table                = (woolhat_t *)malloc(sizeof(woolhat_t));
+    new_table                = (woolhat_t *)HR_malloc(sizeof(woolhat_t));
     new_table->store_current = woolhat_store_new(ctx->last_slot + 1);
     record_len               = sizeof(woolhat_record_t);
     new_table->cleanup_func  = NULL;
@@ -1336,8 +1336,8 @@ tophat_migrate_to_woolhat(tophat_t *self)
     
     new_table->store_current->used_count = ctx->item_count;
     
-    if (mmm_epoch < ctx->next_epoch) {
-	atomic_store(&mmm_epoch, ctx->next_epoch);
+    if (mmm_root->mmm_epoch < ctx->next_epoch) {
+	atomic_store(&mmm_root->mmm_epoch, ctx->next_epoch);
     }
 
     atomic_store(&self->mt_table, new_table);

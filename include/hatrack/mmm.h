@@ -27,6 +27,7 @@
 #include <hatrack/debug.h>
 #include <hatrack/counters.h>
 #include <hatrack/hatomic.h>
+#include <hatrack/helpmanager.h>
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -45,6 +46,15 @@ typedef void (*mmm_cleanup_func)(void *, void *);
 
 typedef struct mmm_header_st    mmm_header_t;
 typedef struct mmm_free_tids_st mmm_free_tids_t;
+typedef struct mmm_root_st      mmm_root_t;
+
+struct mmm_root_st {
+  _Atomic  uint64_t           mmm_epoch;
+  _Atomic  uint64_t           mmm_nexttid;
+  _Atomic (mmm_free_tids_t *) mmm_free_tids;
+           uint64_t           mmm_reservations[HATRACK_THREADS_MAX];
+           help_record_t      help_thread_records[HATRACK_THREADS_MAX];
+};
 
 /* We don't want to keep reservation space for threads that don't need
  * it, so we issue a threadid for each thread to keep locally, which
@@ -60,8 +70,7 @@ typedef struct mmm_free_tids_st mmm_free_tids_t;
 // clang-format off
 extern __thread int64_t        mmm_mytid;
 extern __thread pthread_once_t mmm_inited;
-extern _Atomic  uint64_t       mmm_epoch;
-extern          uint64_t       mmm_reservations[HATRACK_THREADS_MAX];
+extern mmm_root_t *mmm_root;
 
 /* The header data structure. Note that we keep a linked list of
  * "retired" records, which is the purpose of the field 'next'.  The
@@ -92,6 +101,7 @@ struct mmm_free_tids_st {
     uint64_t         tid;
 };
 
+int  mmm_init                (const char *_id, uint64_t size);
 void mmm_register_thread     (void);
 void mmm_reset_tids          (void);
 void mmm_retire              (void *);
@@ -148,7 +158,7 @@ static inline void hatrack_debug_mmm(void *, char *);
  * write_epoch = atomic_fetch_and_add(epoch, 1) + 1
  *
  * The extra + 1 here is because a FAA operation returns the original
- * value, not the new epoch.  The write reall should happen on the
+ * value, not the new epoch.  The write really should happen on the
  * boundary of the old epoch and the new epoch, if there are are
  * readers looking at that epoch already (since they might have
  * already passsed by our node in their work).
@@ -460,7 +470,7 @@ static inline void
 mmm_start_basic_op(void)
 {
     pthread_once(&mmm_inited, mmm_register_thread);
-    mmm_reservations[mmm_mytid] = atomic_load(&mmm_epoch);
+    mmm_root->mmm_reservations[mmm_mytid] = atomic_load(&mmm_root->mmm_epoch);
 
     return;
 }
@@ -523,10 +533,10 @@ mmm_start_linearized_op(void)
 
     pthread_once(&mmm_inited, mmm_register_thread);
 
-    mmm_reservations[mmm_mytid] = atomic_load(&mmm_epoch);
-    read_epoch                  = atomic_load(&mmm_epoch);
+    mmm_root->mmm_reservations[mmm_mytid] = atomic_load(&mmm_root->mmm_epoch);
+    read_epoch                            = atomic_load(&mmm_root->mmm_epoch);
 
-    HATRACK_YN_CTR_NORET(read_epoch == mmm_reservations[mmm_mytid],
+    HATRACK_YN_CTR_NORET(read_epoch == mmm_root->mmm_reservations[mmm_mytid],
                          HATRACK_CTR_LINEAR_EPOCH_EQ);
 
     return read_epoch;
@@ -547,7 +557,7 @@ static inline void
 mmm_end_op(void)
 {
     atomic_signal_fence(memory_order_seq_cst);
-    mmm_reservations[mmm_mytid] = HATRACK_EPOCH_UNRESERVED;
+    mmm_root->mmm_reservations[mmm_mytid] = HATRACK_EPOCH_UNRESERVED;
 
     return;
 }
@@ -587,7 +597,7 @@ static inline void *
 mmm_alloc(uint64_t size)
 {
     uint64_t      actual_size = sizeof(mmm_header_t) + size;
-    mmm_header_t *item        = (mmm_header_t *)calloc(1, actual_size);
+    mmm_header_t *item        = (mmm_header_t *)HR_calloc(1, actual_size);
 
     HATRACK_MALLOC_CTR();
     DEBUG_MMM_INTERNAL(item->data, "mmm_alloc");
@@ -603,9 +613,10 @@ static inline void *
 mmm_alloc_committed(uint64_t size)
 {
     uint64_t      actual_size = sizeof(mmm_header_t) + size;
-    mmm_header_t *item        = (mmm_header_t *)calloc(1, actual_size);
+    mmm_header_t *item        = (mmm_header_t *)HR_calloc(1, actual_size);
 
-    atomic_store(&item->write_epoch, atomic_fetch_add(&mmm_epoch, 1) + 1);
+    atomic_store(&item->write_epoch,
+		 atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1);
 
     HATRACK_MALLOC_CTR();
     DEBUG_MMM_INTERNAL(item->data, "mmm_alloc_committed");
@@ -645,7 +656,7 @@ mmm_commit_write(void *ptr)
     uint64_t      expected_value = 0;
     mmm_header_t *item           = mmm_get_header(ptr);
 
-    cur_epoch = atomic_fetch_add(&mmm_epoch, 1) + 1;
+    cur_epoch = atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1;
 
     /* If this CAS operation fails, it can only be because:
      *
@@ -680,7 +691,7 @@ mmm_help_commit(void *ptr)
     found_epoch = item->write_epoch;
 
     if (!found_epoch) {
-        cur_epoch = atomic_fetch_add(&mmm_epoch, 1) + 1;
+        cur_epoch = atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1;
         LCAS(&item->write_epoch,
              &found_epoch,
              cur_epoch,
@@ -698,7 +709,7 @@ mmm_retire_unused(void *ptr)
     DEBUG_MMM_INTERNAL(ptr, "mmm_retire_unused");
     HATRACK_RETIRE_UNUSED_CTR();
 
-    free(mmm_get_header(ptr));
+    HR_free(mmm_get_header(ptr));
 
     return;
 }
@@ -739,7 +750,7 @@ mmm_retire_fast(void *ptr)
     mmm_header_t *cell;
 
     cell               = mmm_get_header(ptr);
-    cell->retire_epoch = atomic_load(&mmm_epoch);
+    cell->retire_epoch = atomic_load(&mmm_root->mmm_epoch);
     cell->next         = mmm_retire_list;
     mmm_retire_list    = cell;
 

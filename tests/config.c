@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "hatrack.h"
 #include <testhat.h>
 
 #define S_WITH        "with"
@@ -496,7 +497,7 @@ parse_args(int argc, char *argv[])
     char          *cur;
     char          *p;
     size_t         cur_len;
-    bool           got_one;
+    bool           got_one = false;
     config_info_t *ret;
 
     prog_name = argv[0];

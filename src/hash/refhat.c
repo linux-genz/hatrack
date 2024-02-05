@@ -28,7 +28,7 @@ static void refhat_migrate(refhat_t *);
 
 /* refhat_new()
  *
- * Allocates a new refhat object with the system malloc, and
+ * Allocates a new refhat object with the hatrack malloc, and
  * initializes it.
  */
 
@@ -37,7 +37,7 @@ refhat_new(void)
 {
     refhat_t *ret;
 
-    ret = (refhat_t *)malloc(sizeof(refhat_t));
+    ret = (refhat_t *)HR_malloc(sizeof(refhat_t));
 
     refhat_init(ret);
 
@@ -46,10 +46,10 @@ refhat_new(void)
 
 /* refhat_init()
  *
- * It's expected that refhat instances will be created via the default
+ * It's expected that refhat instances will be created via the hatrack
  * malloc.  This function cannot rely on zero-initialization of its
  * own object, though it does zero-initialize the buckets it allocates
- * (also with the default memory allocator).
+ * (also with the hatrack memory allocator).
  *
  * Note that next_epoch starts out as 1, because a 0 value indicates
  * deletion.
@@ -81,7 +81,7 @@ refhat_init_size(refhat_t *self, char size)
     self->used_count = 0;
     self->item_count = 0;
     self->next_epoch = 1;
-    self->buckets    = (refhat_bucket_t *)calloc(len, sizeof(refhat_bucket_t));
+    self->buckets    = (refhat_bucket_t *)HR_calloc(len, sizeof(refhat_bucket_t));
 
     return;
 }
@@ -91,31 +91,31 @@ refhat_init_size(refhat_t *self, char size)
  * This function is meant to be called for refhat to clean up its own
  * internal state before deallocation.
  *
- * refhat_delete() below is similar, except deletes the actual refhat
+ * refhat_delete() below is similar, except it deletes the actual refhat
  * object as well, under the assumption that it was allocated via the
- * system malloc.
+ * hatrack malloc.
  */
 
 void
 refhat_cleanup(refhat_t *self)
 {
-    free(self->buckets);
+    HR_free(self->buckets);
 
     return;
 }
 
 /* refhat_delete()
  *
- * This deallocates a table allocated with the default malloc.  The
- * buckets will always be allocated by the default malloc, so if,
- * for some reason, you use a different allocator, use the default
+ * This deallocates a table allocated with the hatrack malloc.  The
+ * buckets will always be allocated by the hatrack malloc, so if,
+ * for some reason, you use a different allocator, use the hatrack
  * malloc on the buckets, and delete the object yourself.
  */
 void
 refhat_delete(refhat_t *self)
 {
     refhat_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -493,6 +493,7 @@ refhat_view(refhat_t *self, uint64_t *num, bool sort)
     refhat_bucket_t *cur;
     refhat_bucket_t *end;
 
+    // Views are not allocated in fabric memory.
     view = (hatrack_view_t *)malloc(sizeof(hatrack_view_t) * self->item_count);
     p    = view;
     cur  = self->buckets;
@@ -551,7 +552,7 @@ refhat_migrate(refhat_t *self)
     bucket_size   = sizeof(refhat_bucket_t);
     num_buckets   = hatrack_new_size(self->last_slot, self->item_count + 1);
     new_last_slot = num_buckets - 1;
-    new_buckets   = (refhat_bucket_t *)calloc(num_buckets, bucket_size);
+    new_buckets   = (refhat_bucket_t *)HR_calloc(num_buckets, bucket_size);
 
     for (n = 0; n <= self->last_slot; n++) {
         cur = &self->buckets[n];
@@ -576,7 +577,7 @@ refhat_migrate(refhat_t *self)
         }
     }
 
-    free(self->buckets);
+    HR_free(self->buckets);
 
     self->used_count = self->item_count;
     self->buckets    = new_buckets;

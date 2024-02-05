@@ -43,9 +43,11 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 #include <hatrack/hatrack_config.h>
+#include <hatrack/capq.h>
 #include <hatrack/mmm.h>
 
 typedef struct {
+    alignas(16)
     void   *data;
     int64_t jobid;
 } help_cell_t;
@@ -66,8 +68,6 @@ typedef struct {
 typedef _Atomic help_record_t help_record_atomic_t;
 
 typedef void (*helper_func)(void *, help_record_t *, uint64_t);
-
-static help_record_t thread_records[HATRACK_THREADS_MAX];
 
 typedef struct {
     void                *parent;

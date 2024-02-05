@@ -57,7 +57,7 @@ tiara_new(void)
 {
     tiara_t *ret;
 
-    ret = (tiara_t *)malloc(sizeof(tiara_t));
+    ret = (tiara_t *)HR_malloc(sizeof(tiara_t));
 
     tiara_init(ret);
 
@@ -69,7 +69,7 @@ tiara_new_size(char size)
 {
     tiara_t *ret;
 
-    ret = (tiara_t *)malloc(sizeof(tiara_t));
+    ret = (tiara_t *)HR_malloc(sizeof(tiara_t));
 
     tiara_init_size(ret, size);
 
@@ -120,7 +120,7 @@ void
 tiara_delete(tiara_t *self)
 {
     tiara_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -227,6 +227,7 @@ tiara_view(tiara_t *self, uint64_t *num, bool ignored)
 
     store     = atomic_read(&self->store_current);
     alloc_len = sizeof(hatrack_view_t) * (store->last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -257,6 +258,7 @@ tiara_view(tiara_t *self, uint64_t *num, bool ignored)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = realloc(view, num_items * sizeof(hatrack_view_t));
 
     mmm_end_op();

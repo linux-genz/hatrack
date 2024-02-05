@@ -419,6 +419,7 @@ hatrack_or2x64h(generic_2x64_u *s1, uint64_t h)
 #define OR2X64H(s1, s2) hatrack_or2x64h((generic_2x64_u *)(s1), s2)
 #define ORPTR(s1, s2) atomic_fetch_or((_Atomic uint64_t *)(s1), s2)
 
+// Used only by hatring_view(). Views are not allocated in fabric memory.
 #define hatrack_cell_alloc(container_type, cell_type, n)                       \
     (container_type *)calloc(1, sizeof(container_type) + sizeof(cell_type) * n)
 

@@ -60,7 +60,7 @@ hihat_a_new(void)
 {
     hihat_t *ret;
 
-    ret = (hihat_t *)malloc(sizeof(hihat_t));
+    ret = (hihat_t *)HR_malloc(sizeof(hihat_t));
 
     hihat_a_init(ret);
 
@@ -72,7 +72,7 @@ hihat_a_new_size(char size)
 {
     hihat_t *ret;
 
-    ret = (hihat_t *)malloc(sizeof(hihat_t));
+    ret = (hihat_t *)HR_malloc(sizeof(hihat_t));
 
     hihat_a_init_size(ret, size);
 
@@ -124,7 +124,7 @@ void
 hihat_a_delete(hihat_t *self)
 {
     hihat_a_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -233,6 +233,7 @@ hihat_a_view(hihat_t *self, uint64_t *num, bool sort)
 
     store     = atomic_read(&self->store_current);
     alloc_len = sizeof(hatrack_view_t) * (store->last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -264,6 +265,7 @@ hihat_a_view(hihat_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = realloc(view, num_items * sizeof(hatrack_view_t));
 
     if (sort) {

@@ -57,7 +57,7 @@ static void             swimcap_migrate      (swimcap_t *);
 
 /* swimcap_new()
  *
- * Allocates a new swimcap object with the system malloc, and
+ * Allocates a new swimcap object with the hatrack malloc, and
  * initializes it.
  */
 swimcap_t *
@@ -65,7 +65,7 @@ swimcap_new(void)
 {
     swimcap_t *ret;
 
-    ret = (swimcap_t *)malloc(sizeof(swimcap_t));
+    ret = (swimcap_t *)HR_malloc(sizeof(swimcap_t));
 
     swimcap_init(ret);
 
@@ -77,7 +77,7 @@ swimcap_new_size(char size)
 {
     swimcap_t *ret;
 
-    ret = (swimcap_t *)malloc(sizeof(swimcap_t));
+    ret = (swimcap_t *)HR_malloc(sizeof(swimcap_t));
 
     swimcap_init_size(ret, size);
 
@@ -89,7 +89,7 @@ swimcap_new_size(char size)
  * This is identical to duncecap_init().
  *
  * It's expected that swimcap instances will be created via the
- * default malloc.  This function cannot rely on zero-initialization
+ * hatrack malloc.  This function cannot rely on zero-initialization
  * of its own object.
  */
 void
@@ -134,7 +134,7 @@ swimcap_init_size(swimcap_t *self, char size)
  *
  * the delete function below is similar, except that it also calls
  * free() on the actual top-level object as well, under the assumption
- * it was created with the default malloc implementation.
+ * it was created with the hatrack malloc implementation.
  */
 void
 swimcap_cleanup(swimcap_t *self)
@@ -156,8 +156,8 @@ swimcap_cleanup(swimcap_t *self)
  * reference to the store).
  *
  * Note that this function assumes the swimcap object was allocated
- * via the default malloc. If it wasn't, don't call this directly, but
- * do note that the stores were created via the system malloc, and the
+ * via the hatrack malloc. If it wasn't, don't call this directly, but
+ * do note that the stores were created via the hatrack malloc, and the
  * most recent store will need to be freed (and the mutex destroyed).
  *
  * This is particularly important, not just because you might use
@@ -170,7 +170,7 @@ void
 swimcap_delete(swimcap_t *self)
 {
     swimcap_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -435,6 +435,7 @@ swimcap_view(swimcap_t *self, uint64_t *num, bool sort)
     store     = self->store_current;
     last_slot = store->last_slot;
     alloc_len = sizeof(hatrack_view_t) * (last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
     cur       = store->buckets;
@@ -473,6 +474,7 @@ swimcap_view(swimcap_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = (hatrack_view_t *)realloc(view, sizeof(hatrack_view_t) * count);
 
     if (sort) {

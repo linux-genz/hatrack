@@ -24,7 +24,7 @@
 
 /* This starts out with an empty array, and spawns 8 threads.
  *
- * Each thread counts i from to 1,000,000 inserting it's ID | i into
+ * Each thread counts i from 0 to 1,000,000 inserting it's ID | i into
  * the i'th element.
  *
  * We do this to keep each thread writing something different, but
@@ -82,6 +82,7 @@ main(void)
     int64_t   sum2 = 0;
     uint64_t  item;
 
+    mmm_init("hatrack-array", GB(4));
     array = flexarray_new(0);
 
     for (i = 0; i < NUM_THREADS; i++) {

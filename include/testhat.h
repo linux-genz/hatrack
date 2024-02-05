@@ -195,7 +195,6 @@ typedef struct {
     bool              threadsafe;
 } alg_info_t;
 
-extern _Atomic uint64_t mmm_nexttid;
 extern hatrack_hash_t  *precomputed_hashes;
 
 // clang-format off

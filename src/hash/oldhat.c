@@ -159,7 +159,7 @@ oldhat_new(void)
 {
     oldhat_t *ret;
 
-    ret = (oldhat_t *)malloc(sizeof(oldhat_t));
+    ret = (oldhat_t *)HR_malloc(sizeof(oldhat_t));
 
     oldhat_init(ret);
 
@@ -171,7 +171,7 @@ oldhat_new_size(char size)
 {
     oldhat_t *ret;
 
-    ret = (oldhat_t *)malloc(sizeof(oldhat_t));
+    ret = (oldhat_t *)HR_malloc(sizeof(oldhat_t));
 
     oldhat_init_size(ret, size);
 
@@ -248,7 +248,7 @@ void
 oldhat_delete(oldhat_t *self)
 {
     oldhat_cleanup(self);
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -447,6 +447,7 @@ oldhat_view(oldhat_t *self, uint64_t *num, bool sort)
 
     store     = atomic_read(&self->store_current);
     alloc_len = sizeof(hatrack_view_t) * (store->last_slot + 1);
+    // Views are not allocated in fabric memory.
     view      = (hatrack_view_t *)malloc(alloc_len);
     p         = view;
 
@@ -472,6 +473,7 @@ oldhat_view(oldhat_t *self, uint64_t *num, bool sort)
         return NULL;
     }
 
+    // Views are not allocated in fabric memory.
     view = realloc(view, *num * sizeof(hatrack_view_t));
 
     if (sort) {

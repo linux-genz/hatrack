@@ -35,7 +35,7 @@ logring_new(uint64_t ring_size, uint64_t entry_size)
 {
     logring_t *ret;
 
-    ret = (logring_t *)calloc(1, sizeof(logring_t));
+    ret = (logring_t *)HR_calloc(1, sizeof(logring_t));
 
     logring_init(ret, ring_size, entry_size);
 
@@ -65,7 +65,7 @@ logring_init(logring_t *self, uint64_t ring_size, uint64_t entry_size)
 
     l                = sizeof(logring_entry_t) + entry_size;
     self->ring       = hatring_new(n);
-    self->entries    = (logring_entry_t *)calloc(m, l);
+    self->entries    = (logring_entry_t *)HR_calloc(m, l);
     self->last_entry = m - 1;
     self->entry_ix   = 0;
     self->entry_len  = entry_size;
@@ -77,7 +77,7 @@ void
 logring_cleanup(logring_t *self)
 {
     hatring_delete(self->ring);
-    free(self->entries);
+    HR_free(self->entries);
 
     return;
 }
@@ -87,7 +87,7 @@ logring_delete(logring_t *self)
 {
     logring_cleanup(self);
 
-    free(self);
+    HR_free(self);
 
     return;
 }
@@ -310,7 +310,7 @@ logring_view(logring_t *self, bool lax_view)
 	entry = &ret->cells[i];
 
 	if (entry->value) {
-	    free(entry->value);
+	    HR_free(entry->value);
 	}
     }
     
@@ -352,7 +352,7 @@ logring_view_delete(logring_view_t *view)
 	view->next_ix++;
 
 	if (cur->value) {
-	    free(cur->value);
+	    HR_free(cur->value);
 	}
     }
     
@@ -550,7 +550,7 @@ logring_view_help_if_needed(logring_t *self)
 	 * correct item gets installed, so it's not a problem.
 	 */
 
-	contents     = (char *)malloc(data_entry->len);
+	contents     = (char *)HR_malloc(data_entry->len);
 	exp_contents = NULL;
 	
 	memcpy(contents, data_entry->data, exp_len);
@@ -559,7 +559,7 @@ logring_view_help_if_needed(logring_t *self)
 	if (!CAS(&cur_view_entry->value,
 		 (void **)&exp_contents,
 		 (void *)contents)) {
-	    free(contents);
+	    HR_free(contents);
 	}
 
 	/* Now we have to flip VIEW_RESERVE off, if no other thread has,

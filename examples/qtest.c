@@ -1,5 +1,5 @@
-#include <testhat.h>
 #include <hatrack.h>
+#include <testhat.h>
 #include <stdio.h>
 #include <hatrack/debug.h>
 
@@ -18,14 +18,14 @@ pthread_t dequeue_threads[HATRACK_THREADS_MAX];
 
 
 #ifdef ENQUEUE_ONES
-#define enqueue_value(x) 1
+#define enqueue_value(x) (void *)(uintptr_t)1
 #else
-#define enqueue_value(x) x
+#define enqueue_value(x) (void *)(uintptr_t)x
 #endif
 
 // clang-format off
-typedef void     (*enqueue_func)(void *, uint64_t);
-typedef uint64_t (*dequeue_func)(void *, bool *);
+typedef void     (*enqueue_func)(void *, void *);
+typedef void    *(*dequeue_func)(void *, bool *);
 typedef void    *(*new_func)    (uint64_t);
 typedef void     (*del_func)    (void *);
 
@@ -87,6 +87,12 @@ q64_int_dequeue(q64_t *self, bool *found)
 {
     uint64_t res = (uint64_t)q64_dequeue(self, found);
     return res >> 32;
+
+// capq_enqueue returns a uint64_t, while our enqueue_funcs are void
+void
+capq_enqueue_proxy(capq_t *self, void *item)
+{
+    (void)capq_enqueue(self, item);
 }
 
 // clang-format off
@@ -134,6 +140,22 @@ static queue_impl_t algorithms[] = {
 	.can_prealloc = true
     },
     {
+	.name         = "capq",
+	.new          = (new_func)capq_new_size,
+	.enqueue      = (enqueue_func)capq_enqueue_proxy,
+	.dequeue      = (dequeue_func)capq_dequeue,
+	.del          = (del_func)capq_delete,
+	.can_prealloc = true
+	},
+    {
+	.name         = "vector",
+	.new          = (new_func)vector_new,
+	.enqueue      = (enqueue_func)vector_push,
+	.dequeue      = (dequeue_func)vector_pop,
+	.del          = (del_func)vector_delete,
+	.can_prealloc = true
+    },
+    {
         0,
     },
 };
@@ -173,7 +195,7 @@ enqueue_thread(void *info)
 {
     uint64_t       my_total;
     uint64_t       i;
-    uint64_t       enqueue_value;
+    void          *enqueue_value;
     uint64_t       end;
     thread_info_t *enqueue_info;
     enqueue_func   enqueue;
@@ -191,7 +213,7 @@ enqueue_thread(void *info)
 
     for (i = enqueue_info->start; i < end; i++) {
 	enqueue_value = enqueue_value(i);
-        my_total     += enqueue_value;
+        my_total     += (uintptr_t)enqueue_value;
 	
         (*enqueue)(queue, enqueue_value);
     }
@@ -395,7 +417,8 @@ main(void)
     int          row_size;
     int          i, j;
     test_info_t *tests;
-    
+
+    mmm_init("hatrack-qtest", GB(8));
     gate = gate_new();
 
 #ifdef HATRACK_TEST_LLSTACK    
