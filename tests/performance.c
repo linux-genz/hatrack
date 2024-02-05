@@ -613,7 +613,7 @@ run_performance_test(benchmark_t *config)
     test_init_rand(config->seed);
     prepare_operational_mix(config);
     precompute_hashes(calculate_num_test_keys(config->key_range));
-    atomic_store(&mmm_root->mmm_nexttid, 0); // Reset thread ids.
+    HR_atomic_store(&mmm_root->mmm_nexttid, 0); // Reset thread ids.
 
     ops_per_thread = config->total_ops / config->num_threads;
 

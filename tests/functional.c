@@ -66,7 +66,7 @@ functionality_test(test_func_t func,
     testhat_t       *dict;
 
     atomic_store(&test_func, NULL);
-    atomic_store(&mmm_root->mmm_nexttid, 0); // Reset thread ids.
+    HR_atomic_store(&mmm_root->mmm_nexttid, 0); // Reset thread ids.
 
     dict = testhat_new(type);
 

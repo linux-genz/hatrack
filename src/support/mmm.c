@@ -103,10 +103,10 @@ mmm_register_thread(void)
     if (mmm_mytid != -1) {
 	return;
     }
-    mmm_mytid = atomic_fetch_add(&mmm_root->mmm_nexttid, 1);
+    mmm_mytid = HR_atomic_fetch_add(&mmm_root->mmm_nexttid, 1);
     
     if (mmm_mytid >= HATRACK_THREADS_MAX) {
-	head = atomic_load(&mmm_root->mmm_free_tids);
+	head = HR_atomic_load(&mmm_root->mmm_free_tids);
 	
 	do {
 	    if (!head) {
@@ -132,7 +132,7 @@ mmm_tid_giveback(void)
 
     new_head       = mmm_alloc(sizeof(mmm_free_tids_t));
     new_head->tid  = mmm_mytid;
-    old_head       = atomic_load(&mmm_root->mmm_free_tids);
+    old_head       = HR_atomic_load(&mmm_root->mmm_free_tids);
 
     do {
 	new_head->next = old_head;
@@ -145,7 +145,7 @@ mmm_tid_giveback(void)
 // is not the way to handle tid recyling!
 void mmm_reset_tids(void)
 {
-    atomic_store(&mmm_root->mmm_nexttid, 0);
+    HR_atomic_store(&mmm_root->mmm_nexttid, 0);
 
     return;
 }
@@ -207,7 +207,7 @@ mmm_retire(void *ptr)
      */
     if (cell->retire_epoch) {
 	DEBUG_MMM_INTERNAL(ptr, "Double free");
-	DEBUG_PTR((void *)atomic_load(&mmm_root->mmm_epoch), "epoch of double free");
+	DEBUG_PTR((void *)HR_atomic_load(&mmm_root->mmm_epoch), "epoch of double free");
 	
 	abort();
 	
@@ -215,7 +215,7 @@ mmm_retire(void *ptr)
     }
 #endif	
     
-    cell->retire_epoch = atomic_load(&mmm_root->mmm_epoch);
+    cell->retire_epoch = HR_atomic_load(&mmm_root->mmm_epoch);
     cell->next         = mmm_retire_list;
     mmm_retire_list    = cell;
 
@@ -254,7 +254,7 @@ mmm_empty(void)
      * not be able to reserve something that's already been retired
      * by the time we call this.
      */
-    lasttid = atomic_load(&mmm_root->mmm_nexttid);
+    lasttid = HR_atomic_load(&mmm_root->mmm_nexttid);
     
     if (lasttid > HATRACK_THREADS_MAX) {
 	lasttid = HATRACK_THREADS_MAX;

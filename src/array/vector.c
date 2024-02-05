@@ -71,7 +71,7 @@ vector_init(vector_t *vec, int64_t store_size, bool zero)
 	store_size = 1 << VECTOR_MIN_STORE_SZ_LOG;
     }
     
-    atomic_store(&vec->store, vector_new_store(0, store_size));
+    HR_atomic_store(&vec->store, vector_new_store(0, store_size));
     hatrack_help_init(&vec->help_manager, vec, vtable, zero);
 
     return;
@@ -99,12 +99,12 @@ vector_cleanup(vector_t *self)
     vector_item_t   item;
     vec_size_info_t si;
 
-    store = atomic_load(&self->store);
-    si    = atomic_load(&store->array_size_info);
+    store = HR_atomic_load(&self->store);
+    si    = HR_atomic_load(&store->array_size_info);
     
     if (self->eject_callback) {
 	for (i = 0; i < si.array_size; i++) {
-	    item = atomic_load(&store->cells[i]);
+	    item = HR_atomic_load(&store->cells[i]);
 	    if (item.state) {
 		(*self->eject_callback)(item.item);
 	    }
@@ -135,8 +135,8 @@ vector_get(vector_t *self, int64_t index, int *status)
     
     mmm_start_basic_op();
 
-    store = atomic_load(&self->store);
-    si    = atomic_load(&store->array_size_info);    
+    store = HR_atomic_load(&self->store);
+    si    = HR_atomic_load(&store->array_size_info);
 
     if (index >= si.array_size) {
 	if (status) {
@@ -152,7 +152,7 @@ vector_get(vector_t *self, int64_t index, int *status)
 	return NULL;
     }
 	
-    current = atomic_load(&store->cells[index]);
+    current = HR_atomic_load(&store->cells[index]);
 
     if (!(current.state & VECTOR_USED)) {
 	if (status) {
@@ -187,8 +187,8 @@ vector_set(vector_t *self, int64_t index, void *item)
     
     mmm_start_basic_op();
     
-    store      = atomic_load(&self->store);
-    si         = atomic_load(&store->array_size_info);        
+    store      = HR_atomic_load(&self->store);
+    si         = HR_atomic_load(&store->array_size_info);
 	
     if (index >= si.array_size) {
 	mmm_end_op();
@@ -214,7 +214,7 @@ vector_set(vector_t *self, int64_t index, void *item)
     }
 
     cellptr = &store->cells[index];
-    current = atomic_load(cellptr);
+    current = HR_atomic_load(cellptr);
 
     if (current.state & VECTOR_MOVING) {
 	vector_migrate(store, self);
@@ -317,8 +317,8 @@ vector_pop(vector_t *self, bool *found)
      * definitely empty, just linearize ourselves to the read of
      * array_size_info.
      */
-    store = atomic_load(&self->store);
-    si    = atomic_load(&store->array_size_info);
+    store = HR_atomic_load(&self->store);
+    si    = HR_atomic_load(&store->array_size_info);
     if (!si.array_size) {
 	if (found) {
 	    *found = false;
@@ -373,12 +373,12 @@ vector_view(vector_t *self)
 				      NULL,
 				      NULL,
 				      NULL);
-    si        = atomic_load(&store->array_size_info);
+    si        = HR_atomic_load(&store->array_size_info);
     ret->size = si.array_size;
 
     if (self->ret_callback) {
 	for (i = 0; i < si.array_size; i++) {
-	    item = atomic_load(&store->cells[i]);
+	    item = HR_atomic_load(&store->cells[i]);
 	    if (item.state & FLEX_ARRAY_USED) {
 		(*self->ret_callback)(item.item);
 	    }

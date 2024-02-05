@@ -125,10 +125,10 @@ hatstack_init(hatstack_t *self, uint64_t prealloc)
 {
     prealloc = hatrack_round_up_to_power_of_2(prealloc);
 
-    atomic_store(&self->store, hatstack_new_store(prealloc));
+    HR_atomic_store(&self->store, hatstack_new_store(prealloc));
 
 #ifdef HATSTACK_WAIT_FREE
-    atomic_store(&self->push_help_shift, 0);
+    HR_atomic_store(&self->push_help_shift, 0);
 #endif    
     
     return;
@@ -137,7 +137,7 @@ hatstack_init(hatstack_t *self, uint64_t prealloc)
 void
 hatstack_cleanup(hatstack_t *self)
 {
-    mmm_retire_unused(atomic_read(&self->store));
+    mmm_retire_unused(HR_atomic_read(&self->store));
 
     return;
 }
@@ -172,10 +172,10 @@ hatstack_push(hatstack_t *self, void *item)
     
     mmm_start_basic_op();
 
-    store = atomic_read(&self->store);
+    store = HR_atomic_read(&self->store);
 
     while (true) {
-	head_state = atomic_fetch_add(&store->head_state, 1);
+	head_state = HR_atomic_fetch_add(&store->head_state, 1);
 
 	if (head_is_moving(head_state, store->num_cells)) {
 	    store = hatstack_grow_store(store, self);
@@ -194,13 +194,13 @@ hatstack_push(hatstack_t *self, void *item)
 
 #ifdef HATSTACK_WAIT_FREE
 	    if (tosub) {
-		atomic_fetch_sub(&self->push_help_shift, tosub);
+		HR_atomic_fetch_sub(&self->push_help_shift, tosub);
 	    }
 #endif	    
 	    return;
 	}
 #else
-	expected = atomic_load(&store->cells[ix]);
+	expected = HR_atomic_load(&store->cells[ix]);
 #endif	
 
 	if (state_is_moving(expected.state)) {
@@ -226,7 +226,7 @@ hatstack_push(hatstack_t *self, void *item)
 	    
 #ifdef HATSTACK_WAIT_FREE
 	    if (tosub) {
-		atomic_fetch_sub(&self->push_help_shift, tosub);
+		HR_atomic_fetch_sub(&self->push_help_shift, tosub);
 	    }
 #endif	    
 	    
@@ -245,7 +245,7 @@ hatstack_push(hatstack_t *self, void *item)
 #ifdef HATSTACK_WAIT_FREE
 	if (!(++retries % HATSTACK_RETRY_THRESHOLD)) {
 	    tosub++;
-	    atomic_fetch_add(&self->push_help_shift, 1);
+	    HR_atomic_fetch_add(&self->push_help_shift, 1);
 	}
 #endif	
 	continue;
@@ -271,7 +271,7 @@ hatstack_pop(hatstack_t *self, bool *found)
 	/* If pushers need help pushing, we need to slow down our
 	 * invalidation popping.
 	 */
-	incr = atomic_read(&self->push_help_shift);
+	incr = HR_atomic_read(&self->push_help_shift);
 	if (incr > HATSTACK_MAX_BACKOFF) {
 	    incr = HATSTACK_MAX_BACKOFF;
 	}
@@ -291,8 +291,8 @@ hatstack_pop(hatstack_t *self, bool *found)
      */
  top_loop:
     while (true) {
-	store      = atomic_read(&self->store);
-	head_state = atomic_read(&store->head_state);
+	store      = HR_atomic_read(&self->store);
+	head_state = HR_atomic_read(&store->head_state);
 	candidate  = proto_item_pop;	
 
 	if (head_is_moving(head_state, store->num_cells)) {
@@ -313,7 +313,7 @@ hatstack_pop(hatstack_t *self, bool *found)
 	}
 
 	ix       = ix - 1;
-	expected = atomic_read(&store->cells[ix]);
+	expected = HR_atomic_read(&store->cells[ix]);
 
 	/* Go down the stack trying to swap in pops (updating epochs
 	 * where needed), until:
@@ -343,7 +343,7 @@ hatstack_pop(hatstack_t *self, bool *found)
 		     * a pusher, we can just keep going.
 		     */
 		    if (ix--) {
-			expected = atomic_read(&store->cells[ix]);
+			expected = HR_atomic_read(&store->cells[ix]);
 			continue;
 		    }
 		    return hatrack_not_found_w_mmm(found);
@@ -351,13 +351,13 @@ hatstack_pop(hatstack_t *self, bool *found)
 
 #ifdef HATSTACK_WAIT_FREE		
 		if (++i < incr) {
-		    expected = atomic_read(&store->cells[ix]);
+		    expected = HR_atomic_read(&store->cells[ix]);
 		    continue;
 		}
 #endif		
 		
 		if (CAS(&store->cells[ix], &expected, candidate)) {
-		    expected = atomic_read(&store->cells[ix]);
+		    expected = HR_atomic_read(&store->cells[ix]);
 		    continue;
 		}
 		continue;
@@ -371,7 +371,7 @@ hatstack_pop(hatstack_t *self, bool *found)
 	    // Don't care much why we failed; we can move down the
 	    // stack.
 	    if (ix--) {
-		expected = atomic_read(&store->cells[ix]);
+		expected = HR_atomic_read(&store->cells[ix]);
 		continue;
 	    }
 	    return hatrack_not_found_w_mmm(found);
@@ -405,8 +405,8 @@ hatstack_peek(hatstack_t *self, bool *found)
     mmm_start_basic_op();
 
 
-    store      = atomic_read(&self->store);
-    head_state = atomic_read(&store->head_state);
+    store      = HR_atomic_read(&self->store);
+    head_state = HR_atomic_read(&store->head_state);
     candidate  = proto_item_pop;	
     ix         = head_get_index(head_state);
     epoch      = head_get_epoch(head_state);
@@ -436,7 +436,7 @@ hatstack_view(hatstack_t *self)
     mmm_start_basic_op();
 
     while (true) {
-	store    = atomic_read(&self->store);
+	store    = HR_atomic_read(&self->store);
 	expected = false;
 	
 	if (CAS(&store->claimed, &expected, true)) {
@@ -466,7 +466,7 @@ hatstack_view_next(stack_view_t *view, bool *found)
 	    return hatrack_not_found(found);
 	}
 
-	item = atomic_read(&view->store->cells[view->next_ix++]);
+	item = HR_atomic_read(&view->store->cells[view->next_ix++]);
 
 	if (state_is_pushed(item.state)) {
 	    return hatrack_found(found, item.item);
@@ -524,22 +524,22 @@ hatstack_grow_store(stack_store_t *store, hatstack_t *top)
     uint64_t       i;
     uint64_t       j;
 
-    next_store = atomic_read(&top->store);
+    next_store = HR_atomic_read(&top->store);
 
     if (next_store != store) {
 	return next_store;
     }
 
-    next_store = atomic_read(&store->next_store);
+    next_store = HR_atomic_read(&store->next_store);
     if (next_store) {
 	goto help_move;
     }
 
-    head_state = atomic_read(&store->head_state);
+    head_state = HR_atomic_read(&store->head_state);
     j          = 0;
 
     for (i = 0; i < store->num_cells; i++) {
-	expected_item = atomic_read(&store->cells[i]);
+	expected_item = HR_atomic_read(&store->cells[i]);
 	
 	while (true) {
 	    if (state_is_moving(expected_item.state)) {
@@ -582,7 +582,7 @@ hatstack_grow_store(stack_store_t *store, hatstack_t *top)
      * num_cells has been initialized, since a stack could legitimately
      * have 0 items. 
      */
-    atomic_store(&next_store->head_state, HATSTACK_HEAD_INITIALIZING);
+    HR_atomic_store(&next_store->head_state, HATSTACK_HEAD_INITIALIZING);
     
     if (!CAS(&store->next_store, &expected_store, next_store)) {
 	mmm_retire_unused(next_store);
@@ -591,7 +591,7 @@ hatstack_grow_store(stack_store_t *store, hatstack_t *top)
 
  help_move:
     for (i = 0, j = 0; i < store->num_cells; i++) {
-	old_item = atomic_read(&store->cells[i]);
+	old_item = HR_atomic_read(&store->cells[i]);
 	
 	if (state_is_moved(old_item.state)) {
 	    if (state_is_pushed(old_item.state)) {

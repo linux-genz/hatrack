@@ -101,9 +101,9 @@ gate_delete(gate_t *gate)
 static inline void
 gate_thread_ready(gate_t *gate)
 {
-    atomic_fetch_add(&gate->count, 1);
+    HR_atomic_fetch_add(&gate->count, 1);
 
-    while (atomic_read(&gate->count) != (int64_t)GATE_OPEN)
+    while (HR_atomic_read(&gate->count) != (int64_t)GATE_OPEN)
 	;
 
     return;
@@ -120,14 +120,14 @@ gate_thread_done(gate_t *gate)
 static inline void
 gate_open(gate_t *gate, int64_t num_threads)
 {
-    while (atomic_read(&gate->count) != num_threads)
+    while (HR_atomic_read(&gate->count) != num_threads)
 	;
 
-    atomic_signal_fence(memory_order_seq_cst);
+    HR_atomic_signal_fence(memory_order_seq_cst);
     clock_gettime(CLOCK_MONOTONIC, &gate->start_time);
-    atomic_signal_fence(memory_order_seq_cst);
+    HR_atomic_signal_fence(memory_order_seq_cst);
     
-    atomic_store(&gate->count, GATE_OPEN);
+    HR_atomic_store(&gate->count, GATE_OPEN);
 
     return;
 }

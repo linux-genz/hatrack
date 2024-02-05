@@ -109,8 +109,8 @@ logring_enqueue(logring_t *self, void *item, uint64_t len)
     logring_view_help_if_needed(self);
 	
     while (true) {
-	start_epoch = hatring_enqueue_epoch(atomic_read(&self->ring->epochs));
-	ix          = atomic_fetch_add(&self->entry_ix, 1) & self->last_entry;
+	start_epoch = hatring_enqueue_epoch(HR_atomic_read(&self->ring->epochs));
+	ix          = HR_atomic_fetch_add(&self->entry_ix, 1) & self->last_entry;
 	expected    = empty_entry;
 	byte_ix     = ix * (sizeof(logring_entry_t) + self->entry_len);
 	cur         = (logring_entry_t *)&(((char *)self->entries)[byte_ix]);
@@ -137,7 +137,7 @@ logring_enqueue(logring_t *self, void *item, uint64_t len)
     candidate.state       = LOGRING_ENQUEUE_DONE;
     cur->len              = len;
 
-    atomic_store(&cur->info, candidate);
+    HR_atomic_store(&cur->info, candidate);
 
     return;
 }
@@ -164,7 +164,7 @@ logring_dequeue(logring_t *self, void *output, uint64_t *len)
 
 	byte_ix  = ix * (sizeof(logring_entry_t) + self->entry_len);
 	cur      = (logring_entry_t *)&(((char *)self->entries)[byte_ix]);
-	expected = atomic_read(&cur->info);
+	expected = HR_atomic_read(&cur->info);
 
 	while (logring_can_dequeue_here(expected, epoch)) {
 	    candidate        = expected;
@@ -211,12 +211,12 @@ logring_view(logring_t *self, bool lax_view)
     candidate.view = ret;
 
     while (true) {
-	expected = atomic_read(&self->view_state);
+	expected = HR_atomic_read(&self->view_state);
 
 	logring_view_help_if_needed(self);
 	
 	candidate.last_viewid = expected.last_viewid + 1;
-	ret->start_epoch      = atomic_read(&self->ring->epochs);
+	ret->start_epoch      = HR_atomic_read(&self->ring->epochs);
 	
 	if (CAS(&self->view_state, &expected, candidate)) {
 	    break;
@@ -387,7 +387,7 @@ logring_view_help_if_needed(logring_t *self)
     char                 *exp_contents;
     
     mmm_start_basic_op();
-    view_info = atomic_read(&self->view_state);
+    view_info = HR_atomic_read(&self->view_state);
 
     if (!view_info.view) {
 	return;
@@ -403,7 +403,7 @@ logring_view_help_if_needed(logring_t *self)
 	cur_view_entry = &view->cells[vix++];
 	end_ix         = hatring_enqueue_epoch(view->start_epoch);
 
-	if (atomic_read(&cur_view_entry->value)) {
+	if (HR_atomic_read(&cur_view_entry->value)) {
 	    /* We could try to swing the end epoch forward some, but
 	     * since we did it so recently, and are substantially behind,
 	     * we won't bother here; we just move on to the next slot.
@@ -412,14 +412,14 @@ logring_view_help_if_needed(logring_t *self)
 	    continue;
 	}
 	
-	offset_entry_ix = atomic_read(&cur_view_entry->offset_entry_ix);
+	offset_entry_ix = HR_atomic_read(&cur_view_entry->offset_entry_ix);
 
 	if (offset_entry_ix) {
 	    entry_ix = offset_entry_ix - 1;
 	    goto got_entry_index;
 	}
 
-	ringcell   = atomic_read(logring_get_ringcell(self, rix));
+	ringcell   = HR_atomic_read(logring_get_ringcell(self, rix));
 	cell_epoch = hatring_cell_epoch(ringcell.state);
 	
 	/* If the cell epoch is lower than we expect, we should try to
@@ -451,7 +451,7 @@ logring_view_help_if_needed(logring_t *self)
 	     * to this point, so let's check again before we give up.
 	     */
 
-	    offset_entry_ix = atomic_read(&cur_view_entry->offset_entry_ix);
+	    offset_entry_ix = HR_atomic_read(&cur_view_entry->offset_entry_ix);
 
 	    if (offset_entry_ix) {
 		entry_ix = offset_entry_ix - 1;
@@ -467,14 +467,14 @@ logring_view_help_if_needed(logring_t *self)
 	 * move to the next cell.
 	 */
 	if (ringcell.state & HATRING_DEQUEUED) {
-	    atomic_store(&cur_view_entry->cell_skipped, true);
+	    HR_atomic_store(&cur_view_entry->cell_skipped, true);
 	    goto next_cell;
 	}
 
 	/* Otherwise, we're good to try to read from the bigger array.
 	 */
 	entry_ix = (uint64_t)ringcell.item;
-	atomic_store(&cur_view_entry->offset_entry_ix, entry_ix + 1);
+	HR_atomic_store(&cur_view_entry->offset_entry_ix, entry_ix + 1);
 		     
     got_entry_index:
 	/* Okay, phase 1 is complete; we have an index into the bigger
@@ -489,7 +489,7 @@ logring_view_help_if_needed(logring_t *self)
 	 */
 	
 	data_entry  = logring_get_entry(self, entry_ix);
-	exp_de_info = atomic_read(&data_entry->info);
+	exp_de_info = HR_atomic_read(&data_entry->info);
 
 	/* In order to be able to read, the write_epoch must be equal to
 	 * the write epoch we're expecting to see for this entry,

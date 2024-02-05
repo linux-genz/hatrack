@@ -37,6 +37,17 @@
  */
 #define atomic_read(x) atomic_load_explicit(x, memory_order_relaxed)
 
+#ifdef HATRACK_FABRIC_ATOMICS
+#error "need to define HR_atomic_* for HATRACK_FABRIC_ATOMICS"
+#else
+#define HR_atomic_read(x) atomic_load_explicit(x, memory_order_relaxed)
+#define HR_atomic_load(x) atomic_load(x)
+#define HR_atomic_store(_o, _v) atomic_store(_o, _v)
+#define HR_atomic_fetch_add(_o, _v) atomic_fetch_add(_o, _v)
+#define HR_atomic_fetch_sub(_o, _v) atomic_fetch_sub(_o, _v)
+#define HR_atomic_signal_fence(x) atomic_signal_fence(x)
+#endif
+
 /* Most of our writes will need ordering, except when initializing
  * variables, which isn't worth worrying about.
  *

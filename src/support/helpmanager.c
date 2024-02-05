@@ -86,10 +86,10 @@ hatrack_perform_wf_op(help_manager_t *manager,
 	(*f)(manager, other_record, other_jobid);
     } while (other_jobid < my_jobid);
 
-    retcell = atomic_load(&my_record->retval);
+    retcell = HR_atomic_load(&my_record->retval);
 
     if (foundret) {
-	foundcell = atomic_load(&my_record->success);
+	foundcell = HR_atomic_load(&my_record->success);
 	*foundret = (bool)foundcell.data;
     }
 
@@ -106,7 +106,7 @@ hatrack_complete_help(help_manager_t *manager,
     help_cell_t candidate;
     help_cell_t expected;
 
-    expected = atomic_load(&record->retval);
+    expected = HR_atomic_load(&record->retval);
 
     if (expected.jobid < jobid) {
 	candidate.data  = result;
@@ -115,7 +115,7 @@ hatrack_complete_help(help_manager_t *manager,
 	CAS(&record->retval, &expected, candidate);
     }
 
-    expected = atomic_load(&record->success);
+    expected = HR_atomic_load(&record->success);
     
     if (expected.jobid < jobid) {
 	candidate.data  = (void *)success;

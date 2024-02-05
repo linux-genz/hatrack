@@ -470,7 +470,7 @@ static inline void
 mmm_start_basic_op(void)
 {
     pthread_once(&mmm_inited, mmm_register_thread);
-    mmm_root->mmm_reservations[mmm_mytid] = atomic_load(&mmm_root->mmm_epoch);
+    mmm_root->mmm_reservations[mmm_mytid] = HR_atomic_load(&mmm_root->mmm_epoch);
 
     return;
 }
@@ -533,8 +533,8 @@ mmm_start_linearized_op(void)
 
     pthread_once(&mmm_inited, mmm_register_thread);
 
-    mmm_root->mmm_reservations[mmm_mytid] = atomic_load(&mmm_root->mmm_epoch);
-    read_epoch                            = atomic_load(&mmm_root->mmm_epoch);
+    mmm_root->mmm_reservations[mmm_mytid] = HR_atomic_load(&mmm_root->mmm_epoch);
+    read_epoch                            = HR_atomic_load(&mmm_root->mmm_epoch);
 
     HATRACK_YN_CTR_NORET(read_epoch == mmm_root->mmm_reservations[mmm_mytid],
                          HATRACK_CTR_LINEAR_EPOCH_EQ);
@@ -556,7 +556,7 @@ mmm_start_linearized_op(void)
 static inline void
 mmm_end_op(void)
 {
-    atomic_signal_fence(memory_order_seq_cst);
+    HR_atomic_signal_fence(memory_order_seq_cst);
     mmm_root->mmm_reservations[mmm_mytid] = HATRACK_EPOCH_UNRESERVED;
 
     return;
@@ -615,8 +615,8 @@ mmm_alloc_committed(uint64_t size)
     uint64_t      actual_size = sizeof(mmm_header_t) + size;
     mmm_header_t *item        = (mmm_header_t *)HR_calloc(1, actual_size);
 
-    atomic_store(&item->write_epoch,
-		 atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1);
+    HR_atomic_store(&item->write_epoch,
+		    HR_atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1);
 
     HATRACK_MALLOC_CTR();
     DEBUG_MMM_INTERNAL(item->data, "mmm_alloc_committed");
@@ -656,7 +656,7 @@ mmm_commit_write(void *ptr)
     uint64_t      expected_value = 0;
     mmm_header_t *item           = mmm_get_header(ptr);
 
-    cur_epoch = atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1;
+    cur_epoch = HR_atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1;
 
     /* If this CAS operation fails, it can only be because:
      *
@@ -691,7 +691,7 @@ mmm_help_commit(void *ptr)
     found_epoch = item->write_epoch;
 
     if (!found_epoch) {
-        cur_epoch = atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1;
+        cur_epoch = HR_atomic_fetch_add(&mmm_root->mmm_epoch, 1) + 1;
         LCAS(&item->write_epoch,
              &found_epoch,
              cur_epoch,
@@ -750,7 +750,7 @@ mmm_retire_fast(void *ptr)
     mmm_header_t *cell;
 
     cell               = mmm_get_header(ptr);
-    cell->retire_epoch = atomic_load(&mmm_root->mmm_epoch);
+    cell->retire_epoch = HR_atomic_load(&mmm_root->mmm_epoch);
     cell->next         = mmm_retire_list;
     mmm_retire_list    = cell;
 

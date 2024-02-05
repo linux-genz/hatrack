@@ -64,9 +64,9 @@ queue_init_size(queue_t *self, char size_log)
     segments.enqueue_segment   = initial_segment;
     segments.dequeue_segment   = initial_segment;
 
-    atomic_store(&self->segments, segments);
-    atomic_store(&self->help_needed, 0);
-    atomic_store(&self->len, 0);
+    HR_atomic_store(&self->segments, segments);
+    HR_atomic_store(&self->help_needed, 0);
+    HR_atomic_store(&self->len, 0);
 
     return;
 }
@@ -100,11 +100,11 @@ queue_cleanup(queue_t *self)
     queue_segment_t  *cur;
     queue_segment_t  *next;
 
-    segments = atomic_load(&self->segments);
+    segments = HR_atomic_load(&self->segments);
     cur      = segments.dequeue_segment;
 
     while (cur) {
-	next = atomic_load(&cur->next);
+	next = HR_atomic_load(&cur->next);
 	
 	mmm_retire_unused(cur);
 
@@ -153,10 +153,10 @@ queue_enqueue(queue_t *self, void *item)
     mmm_start_basic_op();
 
     need_help       = false;
-    segments        = atomic_read(&self->segments);
+    segments        = HR_atomic_read(&self->segments);
     segment         = segments.enqueue_segment;
     end_size        = segment->size;
-    cur_ix          = atomic_fetch_add(&segment->enqueue_index, step);
+    cur_ix          = HR_atomic_fetch_add(&segment->enqueue_index, step);
     candidate.state = QUEUE_USED;
     candidate.item  = item;
 
@@ -166,41 +166,41 @@ queue_enqueue(queue_t *self, void *item)
 	if (CAS(&segment->cells[cur_ix], &expected, candidate)) {
 	    
 	    if (need_help) {
-		atomic_fetch_sub(&self->help_needed, 1);
+		HR_atomic_fetch_sub(&self->help_needed, 1);
 	    }
 	    mmm_end_op();
 
-	    atomic_fetch_add(&self->len, 1);
+	    HR_atomic_fetch_add(&self->len, 1);
 	    return;
 	}
 	step <<= 1;
-	cur_ix = atomic_fetch_add(&segment->enqueue_index, step);
+	cur_ix = HR_atomic_fetch_add(&segment->enqueue_index, step);
     }
     
     if (step >= QUEUE_HELP_VALUE && !need_help) {
 	need_help = true;
-	atomic_fetch_add(&self->help_needed, 1);
+	HR_atomic_fetch_add(&self->help_needed, 1);
 	
-	segments = atomic_read(&self->segments);
+	segments = HR_atomic_read(&self->segments);
 	
 	if (segments.enqueue_segment != segment) {
 	    segment = segments.enqueue_segment;
-	    cur_ix  = atomic_fetch_add(&segment->enqueue_index, step);
+	    cur_ix  = HR_atomic_fetch_add(&segment->enqueue_index, step);
 	    goto try_again;
 	}
 	
 	new_size = segment->size << 1;
     }
     else {
-	segments = atomic_read(&self->segments);
+	segments = HR_atomic_read(&self->segments);
 	
 	if (segments.enqueue_segment != segment) {
 	    segment = segments.enqueue_segment;
-	    cur_ix = atomic_fetch_add(&segment->enqueue_index, step);
+	    cur_ix = HR_atomic_fetch_add(&segment->enqueue_index, step);
 	    goto try_again;
 	}
 	    
-	if (atomic_read(&self->help_needed)) {
+	if (HR_atomic_read(&self->help_needed)) {
 	    new_size = segment->size << 1;
 	}
 	else {
@@ -212,7 +212,7 @@ queue_enqueue(queue_t *self, void *item)
     new_segment->enqueue_index = 1;
     expected_segment           = NULL;
     
-    atomic_store(&new_segment->cells[0], candidate);
+    HR_atomic_store(&new_segment->cells[0], candidate);
     
 
     if (!CAS(&segment->next, &expected_segment, new_segment)) {
@@ -236,16 +236,16 @@ queue_enqueue(queue_t *self, void *item)
 
     if (!need_to_enqueue) {
 	if (need_help) {
-	    atomic_fetch_sub(&self->help_needed, 1);
+	    HR_atomic_fetch_sub(&self->help_needed, 1);
 	}
 
 	mmm_end_op();
-	atomic_fetch_add(&self->len, 1);
+	HR_atomic_fetch_add(&self->len, 1);
 	
 	return;
     }
     segment = new_segment;
-    cur_ix  = atomic_fetch_add(&segment->enqueue_index, step);
+    cur_ix  = HR_atomic_fetch_add(&segment->enqueue_index, step);
 
     goto try_again;
 }
@@ -264,14 +264,14 @@ queue_dequeue(queue_t *self, bool *found)
 
     mmm_start_basic_op();
 
-    segments = atomic_read(&self->segments);
+    segments = HR_atomic_read(&self->segments);
     segment  = segments.dequeue_segment;
 
  retry_dequeue:
     
     while (true) {
-	cur_ix  = atomic_load(&segment->dequeue_index);
-	head_ix = atomic_load(&segment->enqueue_index);
+	cur_ix  = HR_atomic_load(&segment->dequeue_index);
+	head_ix = HR_atomic_load(&segment->enqueue_index);
 	
 	if (cur_ix >= segment->size) {
 	    break;
@@ -281,7 +281,7 @@ queue_dequeue(queue_t *self, bool *found)
 	    return hatrack_not_found_w_mmm(found);
 	}
 	
-	cur_ix = atomic_fetch_add(&segment->dequeue_index, 1);
+	cur_ix = HR_atomic_fetch_add(&segment->dequeue_index, 1);
 	if (cur_ix >= segment->size) {
 	    break;
 	}
@@ -294,12 +294,12 @@ queue_dequeue(queue_t *self, bool *found)
 	
 	ret = cell_contents.item;
 
-	atomic_fetch_sub(&self->len, 1);
+	HR_atomic_fetch_sub(&self->len, 1);
 	
 	return hatrack_found_w_mmm(found, ret);
     }
     
-    new_segment = atomic_read(&segment->next);
+    new_segment = HR_atomic_read(&segment->next);
     if (!new_segment) {
 	/* The enqueuer threads have not completed setting up a new segment
 	 * yet, so the queue is officially empty.

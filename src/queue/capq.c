@@ -153,14 +153,14 @@ capq_enqueue(capq_t *self, void *item)
     candidate.item  = item;
     
     while (true) {
-	store  = atomic_load(&self->store);
+	store  = HR_atomic_load(&self->store);
 	sz     = store->size;
 	step   = 1;
 	
 	while (true) {
 	    // Note: it's important we read cur_ix before end_ix.
-	    cur_ix = atomic_fetch_add(&store->enqueue_index, step);
-	    end_ix = atomic_load(&store->dequeue_index);
+	    cur_ix = HR_atomic_fetch_add(&store->enqueue_index, step);
+	    end_ix = HR_atomic_load(&store->dequeue_index);
 
 	    /* We are going to write in the buffer in a circular
 	     * fashion until it seems to be full. However, the
@@ -208,7 +208,7 @@ capq_enqueue(capq_t *self, void *item)
 	    }
 
 	    cell            = &store->cells[capq_ix(cur_ix, sz)];
-	    expected        = atomic_read(cell);
+	    expected        = HR_atomic_read(cell);
 	    candidate.state = capq_set_enqueued(cur_ix);
 
 	    if (capq_is_moving(expected.state)) {
@@ -232,7 +232,7 @@ capq_enqueue(capq_t *self, void *item)
 	    }
 
 	    if (CAS(cell, &expected, candidate)) {
-		atomic_fetch_add(&self->len, 1);
+		HR_atomic_fetch_add(&self->len, 1);
 		mmm_end_op();
 
 		return cur_ix;
