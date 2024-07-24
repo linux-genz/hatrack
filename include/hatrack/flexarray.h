@@ -56,7 +56,11 @@ struct flex_store_t {
     alignas(8)
     uint64_t                store_size;
     _Atomic uint64_t        array_size;
+#ifdef HATRACK_FABRIC
+    _Atomic off_holder_t    next;  // native type: flex_store_t *
+#else
     _Atomic (flex_store_t *)next;
+#endif
     _Atomic bool            claimed;
     flex_cell_t             cells[];
 };
@@ -64,7 +68,11 @@ struct flex_store_t {
 typedef struct {
     flex_callback_t          ret_callback;
     flex_callback_t          eject_callback;
+#ifdef HATRACK_FABRIC
+    _Atomic off_holder_t     store;  // native type: flex_store_t *
+#else
     _Atomic (flex_store_t  *)store;
+#endif
 } flexarray_t;
 
 flexarray_t *flexarray_new                (uint64_t);
@@ -78,6 +86,7 @@ bool         flexarray_set                (flexarray_t *, uint64_t, void *);
 void         flexarray_grow               (flexarray_t *, uint64_t);
 void         flexarray_shrink             (flexarray_t *, uint64_t);
 uint64_t     flexarray_len                (flexarray_t *);
+void         flexarray_get_sizes          (flexarray_t *, uint64_t *, uint64_t *);
 flex_view_t *flexarray_view               (flexarray_t *);
 void        *flexarray_view_next          (flex_view_t *, bool *);
 void         flexarray_view_delete        (flex_view_t *);

@@ -1494,6 +1494,7 @@ XXH_PUBLIC_API XXH128_hash_t XXH128(const void  *data,
 static void *
 XXH_malloc(size_t s)
 {
+    // Revisit: HR_malloc?
     return malloc(s);
 }
 

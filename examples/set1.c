@@ -39,6 +39,7 @@ typedef struct {
     char          *name;
 } set_info_t;
 
+#define DONT_PROTECT_AGAINST_BROKEN_OPTIMIZATION
 #ifndef DONT_PROTECT_AGAINST_BROKEN_OPTIMIZATION
 /* I'm outputting the value myself to work around what *seems* to be
  * an optimization bug in clang that shows up sometimes, when -flto

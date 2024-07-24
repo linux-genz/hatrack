@@ -53,7 +53,8 @@ llstack_new_proxy(uint64_t ignore)
 // Right now our queue takes a power-of-two instead of rounding.
 // Until we change that, use this proxy that hardcodes the presize.
 queue_t *
-queue_new_proxy(uint64_t len) {
+queue_new_proxy(uint64_t len)
+{
     if (len) {
 	return queue_new_size(22);
     }
@@ -61,7 +62,8 @@ queue_new_proxy(uint64_t len) {
 }
 
 q64_t *
-q64_new_proxy(uint64_t len) {
+q64_new_proxy(uint64_t len)
+{
     if (len) {
 	return q64_new_size(22);
     }
@@ -79,6 +81,7 @@ q64_int_dequeue(q64_t *self, bool *found)
 {
     uint64_t res = (uint64_t)q64_dequeue(self, found);
     return res >> 32;
+}
 
 // capq_enqueue returns a uint64_t, while our enqueue_funcs are void
 void

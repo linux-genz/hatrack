@@ -72,7 +72,7 @@ mmm_init(const char *_id, uint64_t size)
     if (restart) {
 	root = (mmm_root_t *)RP_get_root_c(MMM_ROOT);
     } else {
-	root = RP_malloc(sizeof(*root));
+	root = HR_malloc(sizeof(*root));
 	root->mmm_epoch = HATRACK_EPOCH_FIRST;
 	root->mmm_nexttid = 0;
 	memset(root->mmm_reservations, 0, HATRACK_THREADS_MAX*sizeof(uint64_t));
@@ -99,25 +99,28 @@ void
 mmm_register_thread(void)
 {
     mmm_free_tids_t *head;
+    off_holder_t     head_off;
 
     if (mmm_mytid != -1) {
 	return;
     }
     mmm_mytid = HR_atomic_fetch_add(&mmm_root->mmm_nexttid, 1);
-    
+
     if (mmm_mytid >= HATRACK_THREADS_MAX) {
-	head = HR_atomic_load(&mmm_root->mmm_free_tids);
-	
+	head_off = HR_atomic_load(&mmm_root->mmm_free_tids);
+
 	do {
+	    head = off2ptr(head_off, &mmm_root->mmm_free_tids, head);
 	    if (!head) {
 		abort();
 	    }
-	} while (!CAS(&mmm_root->mmm_free_tids, &head, head->next));
-	
+	} while (!CAS(&mmm_root->mmm_free_tids, &head_off, head->next));
+
 	mmm_mytid = head->tid;
 	mmm_retire(head);
     }
-    
+
+    DBG_PRINT("thread %lu: mmm_mytid=%ld", pthread_self(), mmm_mytid);
     mmm_root->mmm_reservations[mmm_mytid] = HATRACK_EPOCH_UNRESERVED;
 
     return;
@@ -128,15 +131,17 @@ static void
 mmm_tid_giveback(void)
 {
     mmm_free_tids_t *new_head;
-    mmm_free_tids_t *old_head;
+    off_holder_t     old_head_off, new_head_off;
 
     new_head       = mmm_alloc(sizeof(mmm_free_tids_t));
+    DBG_PRINT("mmm_mytid=%lu, ptr: %p", mmm_mytid, new_head);
     new_head->tid  = mmm_mytid;
-    old_head       = HR_atomic_load(&mmm_root->mmm_free_tids);
+    new_head_off   = ptr2off(new_head, &mmm_root->mmm_free_tids);
+    old_head_off   = HR_atomic_load(&mmm_root->mmm_free_tids);
 
     do {
-	new_head->next = old_head;
-    } while (!CAS(&mmm_root->mmm_free_tids, &old_head, new_head));
+	new_head->next = old_head_off;
+    } while (!CAS(&mmm_root->mmm_free_tids, &old_head_off, new_head_off));
 
     return;
 }
@@ -284,8 +289,7 @@ mmm_empty(void)
      * the top of the list of cells to delete.
      *
      * Note that this function is only called if there's something
-     * something on the retire list, so cell will never start out
-     * empty.
+     * on the retire list, so cell will never start out empty.
      */
     cell = mmm_retire_list;
 

@@ -51,7 +51,11 @@ typedef struct mmm_root_st      mmm_root_t;
 struct mmm_root_st {
   _Atomic  uint64_t           mmm_epoch;
   _Atomic  uint64_t           mmm_nexttid;
+#ifdef HATRACK_FABRIC
+  _Atomic off_holder_t        mmm_free_tids; // shared list requires offsets
+#else
   _Atomic (mmm_free_tids_t *) mmm_free_tids;
+#endif
            uint64_t           mmm_reservations[HATRACK_THREADS_MAX];
            help_record_t      help_thread_records[HATRACK_THREADS_MAX];
 };
@@ -86,7 +90,7 @@ extern mmm_root_t *mmm_root;
 // clang-format off
 struct mmm_header_st {
     alignas(16)
-    mmm_header_t    *next;
+    mmm_header_t    *next; // per-thread list
     _Atomic uint64_t create_epoch;
     _Atomic uint64_t write_epoch;
     uint64_t         retire_epoch;
@@ -97,7 +101,11 @@ struct mmm_header_st {
 };
 
 struct mmm_free_tids_st {
+#ifdef HATRACK_FABRIC
+    off_holder_t     next; // shared list requires offsets
+#else
     mmm_free_tids_t *next;
+#endif
     uint64_t         tid;
 };
 

@@ -27,13 +27,29 @@
 #define MB(x)  KB(x)*1024
 #define GB(x)  MB(x)*1024ull
 #include <hatrack/hatrack_config.h>
+#include <offset_holder.h>
 
 #ifdef HATRACK_FABRIC
 #include <ralloc.hpp>
+#include <stdio.h>
 
-#define HR_malloc(_sz)        RP_malloc(_sz)
+#define DBG_PRINT(msg, ...) do {					\
+	fprintf(stderr, "%s:%d %s " msg "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+	fflush(stderr);							\
+    } while (0)
+#define HR_malloc(_sz)							\
+    ({									\
+	void *_ptr = RP_malloc(_sz);					\
+	DBG_PRINT("HR_malloc (%lu), ptr: %p", (size_t)_sz, _ptr);	\
+	_ptr;								\
+    })
 #define HR_free(_ptr)         RP_free(_ptr)
-#define HR_calloc(_n, _sz)    RP_calloc(_n, _sz)
+#define HR_calloc(_n, _sz)						\
+    ({									\
+	void *_ptr = RP_calloc(_n, _sz);				\
+	DBG_PRINT("HR_calloc (%lu, %lu), ptr: %p", (size_t)_n, (size_t)_sz, _ptr);	\
+	_ptr;								\
+    })
 #define HR_realloc(_ptr, _sz) RP_realloc(_ptr, _sz)
 #define HR_strdup(_ptr)       RP_strdup(_ptr)
 #define HR_strndup(_ptr, _sz) RP_strndup(_ptr, _sz)

@@ -24,7 +24,7 @@
 
 /* This starts out with an empty array, and spawns 8 threads.
  *
- * Each thread counts i from 0 to 1,000,000 inserting it's ID | i into
+ * Each thread counts i from 0 to 10,000,000 inserting it's ID | i into
  * the i'th element.
  *
  * We do this to keep each thread writing something different, but
@@ -52,14 +52,21 @@ void *
 fill_array(void * unused)
 {
     (void)unused;
-    uint64_t i;
+    uint64_t i, arr_sz, store_sz, new_arr_sz, new_store_sz;
 
     for (i = 0; i < NUM_ITERS; i++) {
         while (!flexarray_set(array, i, get_fill_value(i))) {
-            flexarray_grow(array, array->store->store_size + GROW_SIZE);
+	    flexarray_get_sizes(array, &arr_sz, &store_sz);
+	    flexarray_grow(array, arr_sz + GROW_SIZE);
+	    flexarray_get_sizes(array, &new_arr_sz, &new_store_sz);
+	    if (new_store_sz != store_sz) {
+		printf("grow: new size=%lu, store=%lu\n", new_arr_sz, new_store_sz);
+		fflush(stdout);
+	    }
         }
     }
 
+    mmm_clean_up_before_exit();
     return NULL;
 }
 
@@ -81,9 +88,13 @@ main(void)
     int64_t   sum1 = sum_range(0, NUM_ITERS - 1);
     int64_t   sum2 = 0;
     uint64_t  item;
+    uint64_t  arr_sz, store_sz;
 
-    mmm_init("hatrack-array", GB(4));
+    mmm_init("hatrack-array", GB(8));
     array = flexarray_new(0);
+    flexarray_get_sizes(array, &arr_sz, &store_sz);
+    printf("Initial sizes: array=%lu, store=%lu\n", arr_sz, store_sz);
+    fflush(stdout);
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, fill_array, NULL);
@@ -98,8 +109,14 @@ main(void)
         sum2 += (item & MASK);
     }
 
+    flexarray_get_sizes(array, &arr_sz, &store_sz);
+    printf("Final sizes: array=%lu, store=%lu\n", arr_sz, store_sz);
     printf("Expected sum: %ld\n", sum1);
     printf("Computed sum: %ld\n", sum2);
+    fflush(stdout);
 
+    flexarray_delete(array);
+
+    mmm_clean_up_before_exit();
     return 0;
 }
