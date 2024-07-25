@@ -30,5 +30,7 @@ examples/ring
 examples/logringex
 examples/array
 examples/qperf
+examples/off_holder_test
 docs/~*
 #*
+log/
